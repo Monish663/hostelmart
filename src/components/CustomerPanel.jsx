@@ -21,7 +21,7 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
     p.name.toLowerCase().includes(search.toLowerCase())
   )
   const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0)
-  const DELIVERY_CHARGE = 5
+  const DELIVERY_CHARGE = ['1','2','3'].includes(room.trim().charAt(0)) ? 2 : 5
   const total = subtotal + DELIVERY_CHARGE
   const cartCount = cart.reduce((s, c) => s + c.qty, 0)
   const myOrders  = orders.filter(o => o.roomNumber === myRoom && myRoom.trim())
@@ -36,8 +36,9 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
     setCart(prev => prev.map(c => c.id===id ? { ...c, qty:Math.max(0,c.qty+d) } : c).filter(c => c.qty > 0))
 
   const placeOrder = async () => {
-    if (!room.trim())   return alert('Please enter your room number')
-    if (cart.length===0) return alert('Your cart is empty')
+    if (!room.trim()) return alert('Please enter your room number')
+    if (!name.trim()) return alert('Please enter your name')
+    if (cart.length === 0) return alert('Your cart is empty')
     const ord = {
       id: uid(),
       roomNumber: room.trim(),
@@ -245,7 +246,7 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
                       <div style={{ background:'#FFF3CD', border:'1px solid #FFC107',
                         borderRadius:'10px', padding:'8px 14px', fontSize:'13px',
                         color:'#856404', marginBottom:'12px', textAlign:'center', fontWeight:'600' }}>
-                        🏠 Delivery charge: ₹5 per order (paid on delivery)
+                        🏠 Delivery charge: ₹2 for rooms 1xx/2xx/3xx · ₹5 for others (paid on delivery)
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between',
                         fontWeight:'900', fontSize:'22px' }}>
@@ -269,10 +270,10 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
-                          👤 Your Name (optional)
+                          👤 Your Name *
                         </label>
-                        <input type="text" placeholder="Enter your name"
-                          value={name} onChange={e => setName(e.target.value)} style={inp()} />
+                        <input type="text" placeholder="Enter your name (required)"
+                          value={name} onChange={e => setName(e.target.value)} style={inp(P.teal)} required />
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
