@@ -20,7 +20,9 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
     (catFilter === 'All' || p.cat === catFilter) &&
     p.name.toLowerCase().includes(search.toLowerCase())
   )
-  const total     = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const DELIVERY_CHARGE = 5
+  const total = subtotal + DELIVERY_CHARGE
   const cartCount = cart.reduce((s, c) => s + c.qty, 0)
   const myOrders  = orders.filter(o => o.roomNumber === myRoom && myRoom.trim())
 
@@ -229,10 +231,27 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
                         </div>
                       </div>
                     ))}
-                    <div style={{ display:'flex', justifyContent:'space-between',
-                      paddingTop:'16px', fontWeight:'900', fontSize:'22px', borderTop:'2px solid #F3F4F6' }}>
-                      <span>Total</span>
-                      <span style={{ color:P.green }}>₹{total}</span>
+                    <div style={{ borderTop:'2px solid #F3F4F6', paddingTop:'16px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontSize:'15px', color:P.gray, marginBottom:'8px' }}>
+                        <span>Subtotal</span>
+                        <span>₹{subtotal}</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontSize:'15px', color:P.orange, marginBottom:'12px', fontWeight:'700' }}>
+                        <span>🛵 Delivery Charge</span>
+                        <span>₹{DELIVERY_CHARGE}</span>
+                      </div>
+                      <div style={{ background:'#FFF3CD', border:'1px solid #FFC107',
+                        borderRadius:'10px', padding:'8px 14px', fontSize:'13px',
+                        color:'#856404', marginBottom:'12px', textAlign:'center', fontWeight:'600' }}>
+                        🏠 Delivery charge: ₹5 per order (paid on delivery)
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontWeight:'900', fontSize:'22px' }}>
+                        <span>Total</span>
+                        <span style={{ color:P.green }}>₹{total}</span>
+                      </div>
                     </div>
                   </div>
 
