@@ -11,6 +11,7 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
   const [room, setRoom]         = useState('')
   const [name, setName]         = useState(customer?.displayPhone || '')
   const [note, setNote]         = useState('')
+  const [custPhone, setCustPhone] = useState('')
   const [myRoom, setMyRoom]     = useState('')
   const [selfPickup, setSelfPickup] = useState(false)
   const [success, setSuccess]   = useState(false)
@@ -39,12 +40,13 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
   const placeOrder = async () => {
     if (!selfPickup && !room.trim()) return alert('Please enter your room number')
     if (!name.trim()) return alert('Please enter your name')
+    if (custPhone.replace(/\D/g,'').length !== 10) return alert('Please enter a valid 10-digit mobile number')
     if (cart.length===0) return alert('Your cart is empty')
     const ord = {
       id: uid(),
       roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
       customerName: name.trim(),
-      phone: customer?.displayPhone || '',
+      phone: custPhone.replace(/\D/g,''),
       note: note.trim(),
       selfPickup,
       deliveryCharge: DELIVERY_CHARGE,
@@ -261,6 +263,22 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
                         </label>
                         <input type="text" placeholder="Enter your name"
                           value={name} onChange={e => setName(e.target.value)} style={inp()} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
+                          📱 Mobile Number *
+                        </label>
+                        <div style={{ display:'flex', gap:'10px' }}>
+                          <div style={{ background:P.lgray, border:`2px solid ${P.teal}`,
+                            borderRadius:'12px', padding:'11px 14px', fontWeight:'800',
+                            fontSize:'14px', color:P.dark, flexShrink:0 }}>+91</div>
+                          <input type="tel" placeholder="9876543210 (required)"
+                            value={custPhone}
+                            onChange={e => setCustPhone(e.target.value.replace(/\D/g,'').slice(0,10))}
+                            style={{ ...inp(P.teal), fontSize:'16px', fontWeight:'700',
+                              letterSpacing:'2px', flex:1 }}
+                            maxLength={10} required />
+                        </div>
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>

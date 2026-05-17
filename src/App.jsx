@@ -3,7 +3,6 @@ import { dbSet, dbListen, ownerLogout, onOwnerAuthChange } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
-import CustomerLogin from './components/CustomerLogin.jsx'
 import CustomerPanel from './components/CustomerPanel.jsx'
 
 export default function App() {
@@ -86,20 +85,12 @@ export default function App() {
     />
   )
 
-  if (mode === 'customerLogin') return (
-    <CustomerLogin
-      onSuccess={handleCustomerSuccess}
-      onBack={() => setMode('home')}
-    />
-  )
-
   if (mode === 'customer') return (
     <CustomerPanel
       products={products}
       orders={orders}
       saveOrds={saveOrds}
-      customer={customer}
-      onBack={() => { setCustomer(null); setMode('home') }}
+      onBack={() => setMode('home')}
     />
   )
 
@@ -128,8 +119,8 @@ export default function App() {
         {[
           { label:'Shop Owner',  sub:'Manage inventory & fulfil orders', emoji:'👨‍💼',
             grad:`linear-gradient(135deg,${P.coral},${P.orange})`, m:'ownerLogin' },
-          { label:'Customer',    sub:'Login with mobile OTP & order',    emoji:'🛍️',
-            grad:`linear-gradient(135deg,${P.teal},${P.blue})`,   m:'customerLogin' },
+          { label:'Customer',  sub:'Browse & order to your room',  emoji:'🛍️',
+            grad:`linear-gradient(135deg,${P.teal},${P.blue})`,  m:'customer' },
         ].map(({ label, sub, emoji, grad, m }) => (
           <div key={m} onClick={() => setMode(m)} style={{
             background:grad, color:'white', borderRadius:'24px',
