@@ -82,9 +82,14 @@ export default function OwnerDash({ products, orders }) {
                   alignItems:'center', padding:'12px 16px', background:P.lgray,
                   borderRadius:'12px', flexWrap:'wrap', gap:'8px' }}>
                   <div>
-                    <span style={{ fontWeight:'800', fontSize:'15px' }}>🏠 Room {o.roomNumber}</span>
+                    <span style={{ fontWeight:'800', fontSize:'15px' }}>
+                      {o.selfPickup ? '🏃 Self Pickup' : `🏠 Room ${o.roomNumber}`}
+                    </span>
                     {o.customerName && (
                       <span style={{ color:P.gray, fontSize:'13px', marginLeft:'8px' }}>· {o.customerName}</span>
+                    )}
+                    {o.phone && (
+                      <span style={{ color:P.blue, fontSize:'13px', marginLeft:'8px', fontWeight:'700' }}>· 📱 +91 {o.phone}</span>
                     )}
                     <div style={{ color:P.gray, fontSize:'12px', marginTop:'2px' }}>
                       {o.items.length} items · {new Date(o.timestamp).toLocaleTimeString()}

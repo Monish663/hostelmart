@@ -63,9 +63,22 @@ export default function OwnerOrders({ orders, saveOrds, products, saveProds }) {
                   flexWrap:'wrap', gap:'12px', marginBottom:'14px' }}>
                   <div>
                     <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
-                      <span style={{ fontWeight:'900', fontSize:'22px', color:P.dark }}>🏠 Room {o.roomNumber}</span>
-                      {o.customerName && <span style={{ color:P.gray, fontSize:'14px' }}>· {o.customerName}</span>}
+                      <span style={{ fontWeight:'900', fontSize:'22px', color:P.dark }}>
+                        {o.selfPickup ? '🏃 Self Pickup' : `🏠 Room ${o.roomNumber}`}
+                      </span>
                       <Badge status={o.status} />
+                    </div>
+                    <div style={{ display:'flex', gap:'14px', flexWrap:'wrap', marginTop:'6px' }}>
+                      {o.customerName && (
+                        <span style={{ color:P.dark, fontSize:'14px', fontWeight:'700' }}>
+                          👤 {o.customerName}
+                        </span>
+                      )}
+                      {o.phone && (
+                        <span style={{ color:P.blue, fontSize:'14px', fontWeight:'700' }}>
+                          📱 +91 {o.phone}
+                        </span>
+                      )}
                     </div>
                     <div style={{ color:P.gray, fontSize:'12px', marginTop:'4px' }}>
                       {new Date(o.timestamp).toLocaleString()} · Order #{o.id.slice(-5)}

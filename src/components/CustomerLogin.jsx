@@ -1,15 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { P } from '../constants.js'
 import { btn, card, inp } from '../styles.js'
-import { sendOtp } from '../firebase.js'
+import { auth } from '../firebase.js'
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 
 export default function CustomerLogin({ onSuccess, onBack }) {
-  const [step, setStep]       = useState('phone')   // 'phone' | 'otp'
-  const [phone, setPhone]     = useState('')
-  const [otp, setOtp]         = useState('')
-  const [confirm, setConfirm] = useState(null)
-  const [error, setError]     = useState('')
-  const [loading, setLoading] = useState(false)
+  const [step, setStep]         = useState('phone')
+  const [phone, setPhone]       = useState('')
+  const [otp, setOtp]           = useState('')
+  const [confirm, setConfirm]   = useState(null)
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
+  const recaptchaRef            = useRef(null)
+  const verifierRef             = useRef(null)
+
+  /* Setup visible reCAPTCHA when component mounts */
+  useEffect(() => {
+    setupVerifier()
+    return () => {
+      if (verifierRef.current) {
+        try { verifierRef.current.clear() } catch(e) {}
+        verifierRef.current = null
+      }
+    }
+  }, [])
+
+  const setupVerifier = () => {
+    try {
+      if (verifierRef.current) {
+        try { verifierRef.current.clear() } catch(e) {}
+        verifierRef.current = null
+      }
+      verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-box', {
+        size: 'normal',
+        callback: () => {
+          // reCAPTCHA solved — user can now send OTP
+        },
+        'expired-callback': () => {
+          setError('reCAPTCHA expired. Please tick the checkbox again.')
+        }
+      })
+      verifierRef.current.render()
+    } catch(e) {
+      console.error('Recaptcha setup error:', e)
+    }
+  }
 
   const handleSendOtp = async () => {
     const digits = phone.replace(/\D/g, '')
@@ -17,15 +52,36 @@ export default function CustomerLogin({ onSuccess, onBack }) {
       setError('Please enter a valid 10-digit mobile number.')
       return
     }
+    if (!verifierRef.current) {
+      setError('Please complete the reCAPTCHA checkbox first.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
       const fullNumber = '+91' + digits
-      const result = await sendOtp(fullNumber)
+      const result = await signInWithPhoneNumber(auth, fullNumber, verifierRef.current)
       setConfirm(result)
       setStep('otp')
     } catch (e) {
-      setError('Failed to send OTP. Please check your number and try again.')
+      console.error('OTP error:', e)
+      // Show helpful message based on Firebase error code
+      if (e.code === 'auth/invalid-phone-number') {
+        setError('Invalid phone number. Make sure it is a valid Indian mobile number.')
+      } else if (e.code === 'auth/too-many-requests') {
+        setError('Too many attempts. Please wait a few minutes and try again.')
+      } else if (e.code === 'auth/captcha-check-failed') {
+        setError('reCAPTCHA failed. Please tick the checkbox again.')
+        setupVerifier()
+      } else if (e.code === 'auth/operation-not-allowed') {
+        setError('Phone login is not enabled. Please enable Phone Auth in Firebase Console.')
+      } else {
+        setError('Failed to send OTP: ' + (e.message || 'Unknown error'))
+      }
+      // Reset recaptcha on error
+      try { verifierRef.current.clear() } catch(e2) {}
+      verifierRef.current = null
+      setTimeout(() => setupVerifier(), 500)
     } finally {
       setLoading(false)
     }
@@ -33,7 +89,7 @@ export default function CustomerLogin({ onSuccess, onBack }) {
 
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) {
-      setError('Please enter the 6-digit OTP.')
+      setError('Please enter the 6-digit OTP sent to your phone.')
       return
     }
     setLoading(true)
@@ -43,10 +99,17 @@ export default function CustomerLogin({ onSuccess, onBack }) {
       onSuccess({
         uid: result.user.uid,
         phone: result.user.phoneNumber,
-        displayPhone: phone,
+        displayPhone: phone.replace(/\D/g, ''),
       })
     } catch (e) {
-      setError('Incorrect OTP. Please try again.')
+      console.error('Verify error:', e)
+      if (e.code === 'auth/invalid-verification-code') {
+        setError('Incorrect OTP. Please check and try again.')
+      } else if (e.code === 'auth/code-expired') {
+        setError('OTP expired. Please go back and request a new one.')
+      } else {
+        setError('Verification failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -57,6 +120,7 @@ export default function CustomerLogin({ onSuccess, onBack }) {
     setOtp('')
     setConfirm(null)
     setError('')
+    setTimeout(() => setupVerifier(), 300)
   }
 
   return (
@@ -64,10 +128,9 @@ export default function CustomerLogin({ onSuccess, onBack }) {
       alignItems: 'center', justifyContent: 'center', padding: '24px',
       fontFamily: "'Trebuchet MS','Segoe UI',sans-serif" }}>
 
-      {/* Invisible recaptcha container */}
-      <div id="recaptcha-container" />
-
       <div style={{ width: '100%', maxWidth: '420px' }}>
+
+        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '12px' }}>
             {step === 'phone' ? '📱' : '🔑'}
@@ -79,16 +142,18 @@ export default function CustomerLogin({ onSuccess, onBack }) {
           <p style={{ color: P.gray, margin: 0, fontSize: '14px' }}>
             {step === 'phone'
               ? 'Enter your mobile number to receive an OTP'
-              : `OTP sent to +91 ${phone}`}
+              : `OTP sent to +91 ${phone} — check your SMS`}
           </p>
         </div>
 
-        <div style={{ ...card({ border: `2px solid ${P.teal}` }) }}>
+        <div style={{ ...card({ border: `2px solid ${step==='phone'?P.teal:P.purple}` }) }}>
 
+          {/* ── PHONE STEP ── */}
           {step === 'phone' && (
             <>
               <label style={{ display: 'block', fontWeight: '800', fontSize: '13px',
                 color: P.gray, marginBottom: '8px' }}>📱 Mobile Number</label>
+
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                 <div style={{ background: P.lgray, border: `2px solid ${P.teal}`,
                   borderRadius: '12px', padding: '11px 14px', fontWeight: '800',
@@ -99,11 +164,16 @@ export default function CustomerLogin({ onSuccess, onBack }) {
                   value={phone}
                   onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                  style={{ ...inp(P.teal), fontSize: '18px', fontWeight: '700',
-                    letterSpacing: '2px', flex: 1 }}
+                  style={{ ...inp(P.teal), fontSize: '20px', fontWeight: '700',
+                    letterSpacing: '3px', flex: 1 }}
                   autoFocus
                   maxLength={10}
                 />
+              </div>
+
+              {/* reCAPTCHA renders here */}
+              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                <div id="recaptcha-box" ref={recaptchaRef} />
               </div>
 
               {error && (
@@ -125,8 +195,16 @@ export default function CustomerLogin({ onSuccess, onBack }) {
             </>
           )}
 
+          {/* ── OTP STEP ── */}
           {step === 'otp' && (
             <>
+              <div style={{ background: '#EFF6FF', borderRadius: '12px',
+                padding: '12px 16px', marginBottom: '20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', color: P.blue, fontWeight: '700' }}>
+                  📲 OTP sent to +91 {phone}
+                </div>
+              </div>
+
               <label style={{ display: 'block', fontWeight: '800', fontSize: '13px',
                 color: P.gray, marginBottom: '8px' }}>🔑 Enter 6-digit OTP</label>
               <input
@@ -135,7 +213,7 @@ export default function CustomerLogin({ onSuccess, onBack }) {
                 value={otp}
                 onChange={e => setOtp(e.target.value.slice(0, 6))}
                 onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
-                style={{ ...inp(P.teal), fontSize: '28px', fontWeight: '900',
+                style={{ ...inp(P.purple), fontSize: '28px', fontWeight: '900',
                   textAlign: 'center', letterSpacing: '8px', marginBottom: '20px' }}
                 autoFocus
                 maxLength={6}
@@ -150,12 +228,12 @@ export default function CustomerLogin({ onSuccess, onBack }) {
               )}
 
               <button onClick={handleVerifyOtp} disabled={loading} style={{
-                ...btn(`linear-gradient(135deg,${P.teal},${P.blue})`),
+                ...btn(`linear-gradient(135deg,${P.purple},${P.blue})`),
                 width: '100%', justifyContent: 'center',
                 padding: '16px', fontSize: '16px', borderRadius: '12px',
                 opacity: loading ? 0.7 : 1, marginBottom: '12px',
               }}>
-                {loading ? '⏳ Verifying…' : '✅ Verify OTP'}
+                {loading ? '⏳ Verifying…' : '✅ Verify & Login'}
               </button>
 
               <button onClick={handleResend} style={{
