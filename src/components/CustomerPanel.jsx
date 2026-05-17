@@ -11,9 +11,9 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
   const [room, setRoom]         = useState('')
   const [name, setName]         = useState(customer?.displayPhone || '')
   const [note, setNote]         = useState('')
-  const [custPhone, setCustPhone] = useState('')
   const [myRoom, setMyRoom]     = useState('')
   const [selfPickup, setSelfPickup] = useState(false)
+  const [custPhone, setCustPhone]   = useState('')
   const [success, setSuccess]   = useState(false)
 
   const inStock  = products.filter(p => p.stock > 0)
@@ -238,45 +238,104 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
                         </div>
                       </div>
                     ))}
-                    <div style={{ display:'flex', justifyContent:'space-between',
-                      paddingTop:'16px', fontWeight:'900', fontSize:'22px', borderTop:'2px solid #F3F4F6' }}>
-                      <span>Total</span>
-                      <span style={{ color:P.green }}>₹{total}</span>
+                    {/* Subtotal + Delivery + Total */}
+                    <div style={{ borderTop:'2px solid #F3F4F6', paddingTop:'16px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontSize:'15px', color:P.gray, marginBottom:'8px' }}>
+                        <span>Subtotal</span><span>₹{subtotal}</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontSize:'15px', fontWeight:'700', marginBottom:'10px',
+                        color: selfPickup ? P.green : P.orange }}>
+                        <span>🛵 Delivery Charge</span>
+                        <span>{selfPickup ? '🆓 FREE' : `₹${DELIVERY_CHARGE}`}</span>
+                      </div>
+                      {!selfPickup && (
+                        <div style={{ background:'#FFF3CD', border:'1px solid #FFC107',
+                          borderRadius:'8px', padding:'7px 12px', fontSize:'12px',
+                          color:'#856404', marginBottom:'10px', textAlign:'center', fontWeight:'600' }}>
+                          🏠 Rooms 1xx/2xx/3xx = ₹2 &nbsp;·&nbsp; Other rooms = ₹5
+                        </div>
+                      )}
+                      {selfPickup && (
+                        <div style={{ background:'#D1FAE5', border:`1px solid ${P.green}`,
+                          borderRadius:'8px', padding:'7px 12px', fontSize:'12px',
+                          color:'#065F46', marginBottom:'10px', textAlign:'center', fontWeight:'700' }}>
+                          🏃 Self Pickup — No delivery charge!
+                        </div>
+                      )}
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontWeight:'900', fontSize:'22px', borderTop:'1px solid #F3F4F6', paddingTop:'10px' }}>
+                        <span>Total</span>
+                        <span style={{ color:P.green }}>₹{total}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Delivery Details */}
-                  <div style={{ ...card({ border:`2px solid ${P.teal}` }) }}>
-                    <h3 style={{ color:P.teal, margin:'0 0 18px', fontSize:'18px' }}>📍 Delivery Details</h3>
-                    <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
-                      <div>
-                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
-                          🏠 Room Number *
-                        </label>
-                        <input type="text" placeholder="Enter your room number (e.g. 201)"
-                          value={room} onChange={e => setRoom(e.target.value)}
-                          style={{ ...inp(P.teal), fontSize:'16px', fontWeight:'700', padding:'14px 16px' }} />
+                  {/* Pickup / Delivery Toggle */}
+                  <div style={{ ...card({ marginBottom:'16px' }) }}>
+                    <h3 style={{ margin:'0 0 14px', fontSize:'16px', color:P.dark, fontWeight:'800' }}>
+                      🚚 Delivery Method
+                    </h3>
+                    <div style={{ display:'flex', gap:'12px' }}>
+                      <div onClick={() => setSelfPickup(false)} style={{
+                        flex:1, border:`2px solid ${!selfPickup ? P.teal : '#E5E7EB'}`,
+                        borderRadius:'14px', padding:'14px', cursor:'pointer', textAlign:'center',
+                        background: !selfPickup ? P.teal+'18' : '#fff', transition:'all 0.2s',
+                      }}>
+                        <div style={{ fontSize:'28px', marginBottom:'6px' }}>🏠</div>
+                        <div style={{ fontWeight:'800', color: !selfPickup ? P.teal : P.gray, fontSize:'14px' }}>Room Delivery</div>
+                        <div style={{ fontSize:'12px', color: !selfPickup ? P.teal : P.gray, marginTop:'3px' }}>₹2 – ₹5 charge</div>
                       </div>
+                      <div onClick={() => setSelfPickup(true)} style={{
+                        flex:1, border:`2px solid ${selfPickup ? P.green : '#E5E7EB'}`,
+                        borderRadius:'14px', padding:'14px', cursor:'pointer', textAlign:'center',
+                        background: selfPickup ? P.green+'18' : '#fff', transition:'all 0.2s',
+                      }}>
+                        <div style={{ fontSize:'28px', marginBottom:'6px' }}>🏃</div>
+                        <div style={{ fontWeight:'800', color: selfPickup ? P.green : P.gray, fontSize:'14px' }}>Self Pickup</div>
+                        <div style={{ fontSize:'12px', color: P.green, fontWeight:'700', marginTop:'3px' }}>FREE</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order Details Form */}
+                  <div style={{ ...card({ border:`2px solid ${selfPickup ? P.green : P.teal}` }) }}>
+                    <h3 style={{ color: selfPickup ? P.green : P.teal, margin:'0 0 18px', fontSize:'18px' }}>
+                      {selfPickup ? '🏃 Pickup Details' : '📍 Delivery Details'}
+                    </h3>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+                      {!selfPickup && (
+                        <div>
+                          <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
+                            🏠 Room Number *
+                          </label>
+                          <input type="text" placeholder="Enter your room number (e.g. 201)"
+                            value={room} onChange={e => setRoom(e.target.value)}
+                            style={{ ...inp(P.teal), fontSize:'16px', fontWeight:'700', padding:'14px 16px' }} />
+                        </div>
+                      )}
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
-                          👤 Your Name (optional)
+                          👤 Your Name *
                         </label>
-                        <input type="text" placeholder="Enter your name"
-                          value={name} onChange={e => setName(e.target.value)} style={inp()} />
+                        <input type="text" placeholder="Enter your name (required)"
+                          value={name} onChange={e => setName(e.target.value)}
+                          style={{ ...inp(selfPickup ? P.green : P.teal) }} required />
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
                           📱 Mobile Number *
                         </label>
                         <div style={{ display:'flex', gap:'10px' }}>
-                          <div style={{ background:P.lgray, border:`2px solid ${P.teal}`,
+                          <div style={{ background:P.lgray, border:`2px solid ${selfPickup ? P.green : P.teal}`,
                             borderRadius:'12px', padding:'11px 14px', fontWeight:'800',
                             fontSize:'14px', color:P.dark, flexShrink:0 }}>+91</div>
                           <input type="tel" placeholder="9876543210 (required)"
                             value={custPhone}
                             onChange={e => setCustPhone(e.target.value.replace(/\D/g,'').slice(0,10))}
-                            style={{ ...inp(P.teal), fontSize:'16px', fontWeight:'700',
-                              letterSpacing:'2px', flex:1 }}
+                            style={{ ...inp(selfPickup ? P.green : P.teal), fontSize:'16px',
+                              fontWeight:'700', letterSpacing:'2px', flex:1 }}
                             maxLength={10} required />
                         </div>
                       </div>
@@ -288,16 +347,27 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
                           value={note} onChange={e => setNote(e.target.value)} style={inp()} />
                       </div>
                     </div>
+
+                    {selfPickup && (
+                      <div style={{ background:'#D1FAE5', border:`1.5px solid ${P.green}`,
+                        borderRadius:'10px', padding:'12px 16px', marginTop:'16px',
+                        color:'#065F46', fontWeight:'700', fontSize:'13px', textAlign:'center' }}>
+                        🏃 Come to the shop to collect your order. No delivery charge!
+                      </div>
+                    )}
+
                     <button onClick={placeOrder} style={{
-                      ...btn(`linear-gradient(135deg,${P.coral},${P.orange})`),
+                      ...btn(selfPickup
+                        ? `linear-gradient(135deg,${P.green},${P.teal})`
+                        : `linear-gradient(135deg,${P.coral},${P.orange})`),
                       width:'100%', justifyContent:'center', padding:'18px',
                       fontSize:'17px', borderRadius:'14px', marginTop:'20px',
-                      boxShadow:`0 8px 24px ${P.coral}55`,
+                      boxShadow:`0 8px 24px ${selfPickup ? P.green : P.coral}55`,
                     }}>
-                      🚀 Place Order &nbsp;·&nbsp; ₹{total}
+                      {selfPickup ? '🏃 Place Pickup Order' : '🚀 Place Order'} &nbsp;·&nbsp; ₹{total}
                     </button>
                     <p style={{ color:P.gray, fontSize:'13px', textAlign:'center', marginTop:'12px' }}>
-                      💳 Pay on delivery &nbsp;·&nbsp; 🏠 Delivered to your room
+                      💳 Pay on {selfPickup ? 'pickup at shop' : 'delivery'}
                     </p>
                   </div>
                 </>
