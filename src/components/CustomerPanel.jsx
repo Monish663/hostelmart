@@ -43,6 +43,17 @@ export default function CustomerPanel({ products, orders, onBack }) {
     if (!name.trim()) return alert('Please enter your name')
     if (custPhone.replace(/\D/g,'').length !== 10) return alert('Please enter a valid 10-digit mobile number')
     if (cart.length===0) return alert('Your cart is empty')
+
+    // Security: verify prices match actual product prices before submitting
+    for (const item of cart) {
+      const realProduct = products.find(p => p.id === item.id)
+      if (!realProduct || item.price !== realProduct.price) {
+        return alert('Something went wrong. Please refresh and try again.')
+      }
+      if (item.qty > realProduct.stock) {
+        return alert(`Only ${realProduct.stock} units of ${item.name} available.`)
+      }
+    }
     const ord = {
       id: uid(),
       roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
