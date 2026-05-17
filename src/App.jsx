@@ -13,38 +13,44 @@ export default function App() {
 
   /* Real-time Firebase listeners */
   useEffect(() => {
-    let loadedProds = false
-    let loadedOrds  = false
-    const checkReady = () => { if (loadedProds && loadedOrds) setReady(true) }
+    let unsubProds = () => {}
+    let unsubOrds  = () => {}
 
-    // Sign in anonymously FIRST, then start listeners
-    signInCustomer().catch(() => {}).finally(() => {
+    const startListeners = () => {
+      let loadedProds = false
+      let loadedOrds  = false
+      const checkReady = () => { if (loadedProds && loadedOrds) setReady(true) }
 
-    const unsubProds = dbListen('products', (data) => {
-      if (data) {
-        setProducts(Array.isArray(data) ? data : Object.values(data))
-      } else {
-        dbSet('products', INIT_PRODUCTS)
-        setProducts(INIT_PRODUCTS)
-      }
-      loadedProds = true; checkReady()
-    })
+      unsubProds = dbListen('products', (data) => {
+        if (data) {
+          setProducts(Array.isArray(data) ? data : Object.values(data))
+        } else {
+          dbSet('products', INIT_PRODUCTS)
+          setProducts(INIT_PRODUCTS)
+        }
+        loadedProds = true; checkReady()
+      })
 
-    const unsubOrds = dbListen('orders', (data) => {
-      if (data) {
-        const arr = Array.isArray(data) ? data : Object.values(data)
-        setOrders(arr.filter(Boolean))
-      } else {
-        setOrders([])
-      }
-      loadedOrds = true; checkReady()
-    })
+      unsubOrds = dbListen('orders', (data) => {
+        if (data) {
+          const arr = Array.isArray(data) ? data : Object.values(data)
+          setOrders(arr.filter(Boolean))
+        } else {
+          setOrders([])
+        }
+        loadedOrds = true; checkReady()
+      })
+    }
+
+    /* Sign in anonymously first so rules allow reading, then start listeners */
+    signInCustomer()
+      .catch(() => {})
+      .finally(() => startListeners())
 
     /* Track owner Firebase Auth state */
     const unsubAuth = onOwnerAuthChange((user) => {
       if (user && user.email && mode === 'ownerLogin') setMode('owner')
     })
-  })
 
     return () => { unsubProds(); unsubOrds(); unsubAuth() }
   }, [])
