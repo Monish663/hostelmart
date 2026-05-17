@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getDatabase, ref, set, get, onValue, push } from 'firebase/database'
+import { getDatabase, ref, set, get, onValue, push, remove } from 'firebase/database'
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -42,6 +42,11 @@ export const dbListen = (path, callback) => {
 export const dbAppendOrder = async (order) => {
   // Write to orders/{orderId} — rules block any edit to existing orders
   await set(ref(database, `orders/${order.id}`), order)
+}
+
+/* ── Delete an order properly ── */
+export const dbDeleteOrder = async (orderId) => {
+  await remove(ref(database, `orders/${orderId}`))
 }
 
 /* ── Owner Auth — email/password, never stored in code ── */

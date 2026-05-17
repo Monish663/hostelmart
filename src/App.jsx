@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbSet, dbListen, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
+import { dbSet, dbListen, ownerLogout, onOwnerAuthChange, signInCustomer, dbDeleteOrder } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -56,7 +56,7 @@ export default function App() {
     if (updatedProds) saveProds(updatedProds)
   }
 
-  const deleteOrder = (id) => dbSet(`orders/${id}`, null)
+  const deleteOrder = (id) => dbDeleteOrder(id)
 
   const handleOwnerLogout = async () => {
     await ownerLogout()

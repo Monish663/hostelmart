@@ -121,7 +121,7 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
                   {o.status === 'delivered' && (
                     <span style={{ color:P.green, fontWeight:'700' }}>✅ Delivered successfully</span>
                   )}
-                  <button onClick={() => del(o.id)}
+                  <button onClick={() => { if(window.confirm('Delete this order?')) deleteOrder(o.id) }}
                     style={{ ...btn('#FEE2E2','#DC2626',true), marginLeft:'auto' }}>🗑️</button>
                 </div>
               </div>
