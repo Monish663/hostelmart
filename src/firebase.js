@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app'
 import { getDatabase, ref, set, get, onValue } from 'firebase/database'
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  onAuthStateChanged,
+} from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,26 +19,52 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const app = initializeApp(firebaseConfig)
+const app      = initializeApp(firebaseConfig)
 const database = getDatabase(app)
+export const auth = getAuth(app)
 
-/* ── Write data to a path ── */
+/* Database helpers */
 export const dbSet = async (path, data) => {
   await set(ref(database, path), data)
 }
-
-/* ── Read data once from a path ── */
 export const dbGet = async (path) => {
   const snapshot = await get(ref(database, path))
   return snapshot.exists() ? snapshot.val() : null
 }
-
-/* ── Real-time listener — calls callback on every change ── */
 export const dbListen = (path, callback) => {
-  const unsubscribe = onValue(ref(database, path), (snapshot) => {
+  return onValue(ref(database, path), (snapshot) => {
     callback(snapshot.exists() ? snapshot.val() : null)
   })
-  return unsubscribe   // call this to stop listening
 }
+
+/* Owner Auth - email/password via Firebase Auth - no password in code */
+export const ownerLogin = (email, password) =>
+  signInWithEmailAndPassword(auth, email, password)
+
+export const ownerLogout = () => signOut(auth)
+
+export const onOwnerAuthChange = (callback) =>
+  onAuthStateChanged(auth, callback)
+
+/* Customer Phone OTP Auth */
+export const setupRecaptcha = (elementId) => {
+  if (window.recaptchaVerifier) {
+    try { window.recaptchaVerifier.clear() } catch(e) {}
+    window.recaptchaVerifier = null
+  }
+  window.recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
+    size: 'invisible',
+    callback: () => {},
+  })
+  return window.recaptchaVerifier
+}
+
+export const sendOtp = async (phoneNumber) => {
+  const verifier = setupRecaptcha('recaptcha-container')
+  const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier)
+  return confirmation
+}
+
+export const customerLogout = () => signOut(auth)
 
 export { database }

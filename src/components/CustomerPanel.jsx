@@ -3,16 +3,17 @@ import { P, CAT, uid } from '../constants.js'
 import { btn, card, inp } from '../styles.js'
 import Badge from './Badge.jsx'
 
-export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
-  const [tab, setTab]       = useState('shop')
+export default function CustomerPanel({ products, orders, saveOrds, onBack, customer }) {
+  const [tab, setTab]           = useState('shop')
   const [catFilter, setCatFilter] = useState('All')
-  const [search, setSearch] = useState('')
-  const [cart, setCart]     = useState([])
-  const [room, setRoom]     = useState('')
-  const [name, setName]     = useState('')
-  const [note, setNote]     = useState('')
-  const [myRoom, setMyRoom] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [search, setSearch]     = useState('')
+  const [cart, setCart]         = useState([])
+  const [room, setRoom]         = useState('')
+  const [name, setName]         = useState(customer?.displayPhone || '')
+  const [note, setNote]         = useState('')
+  const [myRoom, setMyRoom]     = useState('')
+  const [selfPickup, setSelfPickup] = useState(false)
+  const [success, setSuccess]   = useState(false)
 
   const inStock  = products.filter(p => p.stock > 0)
   const cats     = ['All', ...Object.keys(CAT)]
@@ -20,11 +21,11 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
     (catFilter === 'All' || p.cat === catFilter) &&
     p.name.toLowerCase().includes(search.toLowerCase())
   )
-  const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0)
-  const DELIVERY_CHARGE = ['1','2','3'].includes(room.trim().charAt(0)) ? 2 : 5
-  const total = subtotal + DELIVERY_CHARGE
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0)
-  const myOrders  = orders.filter(o => o.roomNumber === myRoom && myRoom.trim())
+  const subtotal      = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const DELIVERY_CHARGE = selfPickup ? 0 : (['1','2','3'].includes(room.trim().charAt(0)) ? 2 : 5)
+  const total         = subtotal + DELIVERY_CHARGE
+  const cartCount     = cart.reduce((s, c) => s + c.qty, 0)
+  const myOrders      = orders.filter(o => o.roomNumber === (selfPickup ? 'PICKUP-'+customer?.displayPhone : myRoom) && myRoom.trim())
 
   const addToCart = (p) => setCart(prev => {
     const ex = prev.find(c => c.id === p.id)
@@ -36,14 +37,17 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
     setCart(prev => prev.map(c => c.id===id ? { ...c, qty:Math.max(0,c.qty+d) } : c).filter(c => c.qty > 0))
 
   const placeOrder = async () => {
-    if (!room.trim()) return alert('Please enter your room number')
+    if (!selfPickup && !room.trim()) return alert('Please enter your room number')
     if (!name.trim()) return alert('Please enter your name')
-    if (cart.length === 0) return alert('Your cart is empty')
+    if (cart.length===0) return alert('Your cart is empty')
     const ord = {
       id: uid(),
-      roomNumber: room.trim(),
+      roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
       customerName: name.trim(),
+      phone: customer?.displayPhone || '',
       note: note.trim(),
+      selfPickup,
+      deliveryCharge: DELIVERY_CHARGE,
       items: cart.map(c => ({
         productId:c.id, name:c.name, price:c.price, qty:c.qty, unit:c.unit, emoji:c.emoji,
       })),
@@ -232,27 +236,10 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
                         </div>
                       </div>
                     ))}
-                    <div style={{ borderTop:'2px solid #F3F4F6', paddingTop:'16px' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between',
-                        fontSize:'15px', color:P.gray, marginBottom:'8px' }}>
-                        <span>Subtotal</span>
-                        <span>₹{subtotal}</span>
-                      </div>
-                      <div style={{ display:'flex', justifyContent:'space-between',
-                        fontSize:'15px', color:P.orange, marginBottom:'12px', fontWeight:'700' }}>
-                        <span>🛵 Delivery Charge</span>
-                        <span>₹{DELIVERY_CHARGE}</span>
-                      </div>
-                      <div style={{ background:'#FFF3CD', border:'1px solid #FFC107',
-                        borderRadius:'10px', padding:'8px 14px', fontSize:'13px',
-                        color:'#856404', marginBottom:'12px', textAlign:'center', fontWeight:'600' }}>
-                        🏠 Delivery charge: ₹2 for rooms 1xx/2xx/3xx · ₹5 for others (paid on delivery)
-                      </div>
-                      <div style={{ display:'flex', justifyContent:'space-between',
-                        fontWeight:'900', fontSize:'22px' }}>
-                        <span>Total</span>
-                        <span style={{ color:P.green }}>₹{total}</span>
-                      </div>
+                    <div style={{ display:'flex', justifyContent:'space-between',
+                      paddingTop:'16px', fontWeight:'900', fontSize:'22px', borderTop:'2px solid #F3F4F6' }}>
+                      <span>Total</span>
+                      <span style={{ color:P.green }}>₹{total}</span>
                     </div>
                   </div>
 
@@ -270,10 +257,10 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack }) {
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
-                          👤 Your Name *
+                          👤 Your Name (optional)
                         </label>
-                        <input type="text" placeholder="Enter your name (required)"
-                          value={name} onChange={e => setName(e.target.value)} style={inp(P.teal)} required />
+                        <input type="text" placeholder="Enter your name"
+                          value={name} onChange={e => setName(e.target.value)} style={inp()} />
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>

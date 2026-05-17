@@ -1,23 +1,32 @@
 import { useState } from 'react'
 import { P } from '../constants.js'
 import { btn, card, inp } from '../styles.js'
-import { OWNER_ID, OWNER_PWD } from '../constants.js'
+import { ownerLogin } from '../firebase.js'
 
 export default function OwnerLogin({ onSuccess, onBack }) {
-  const [userId, setUserId]     = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd]   = useState(false)
   const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
   const [shake, setShake]       = useState(false)
 
-  const handleLogin = () => {
-    if (userId === OWNER_ID && password === OWNER_PWD) {
-      setError('')
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      await ownerLogin(email.trim(), password)
       onSuccess()
-    } else {
-      setError('Invalid User ID or Password. Please try again.')
+    } catch (e) {
+      setError('Invalid email or password. Please try again.')
       setShake(true)
       setTimeout(() => setShake(false), 600)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -31,16 +40,13 @@ export default function OwnerLogin({ onSuccess, onBack }) {
       <style>{`
         @keyframes shake {
           0%,100%{transform:translateX(0)}
-          20%{transform:translateX(-10px)}
-          40%{transform:translateX(10px)}
-          60%{transform:translateX(-8px)}
-          80%{transform:translateX(8px)}
+          20%{transform:translateX(-10px)} 40%{transform:translateX(10px)}
+          60%{transform:translateX(-8px)}  80%{transform:translateX(8px)}
         }
         .shake { animation: shake 0.5s ease; }
       `}</style>
 
       <div className={shake ? 'shake' : ''} style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '12px' }}>🔐</div>
           <h1 style={{ fontSize: '28px', fontWeight: '900', color: P.dark,
@@ -50,16 +56,15 @@ export default function OwnerLogin({ onSuccess, onBack }) {
           </p>
         </div>
 
-        {/* Form */}
         <div style={{ ...card({ border: `2px solid ${P.coral}` }) }}>
           <div style={{ marginBottom: '18px' }}>
             <label style={{ display: 'block', fontWeight: '800', fontSize: '13px',
-              color: P.gray, marginBottom: '8px' }}>👤 User ID</label>
+              color: P.gray, marginBottom: '8px' }}>📧 Owner Email</label>
             <input
-              type="text"
-              placeholder="Enter your user ID"
-              value={userId}
-              onChange={e => setUserId(e.target.value)}
+              type="email"
+              placeholder="Enter owner email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               onKeyDown={handleKey}
               style={{ ...inp(P.coral), fontSize: '15px', padding: '13px 16px' }}
               autoFocus
@@ -72,7 +77,7 @@ export default function OwnerLogin({ onSuccess, onBack }) {
             <div style={{ position: 'relative' }}>
               <input
                 type={showPwd ? 'text' : 'password'}
-                placeholder="Enter your password"
+                placeholder="Enter password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={handleKey}
@@ -87,7 +92,6 @@ export default function OwnerLogin({ onSuccess, onBack }) {
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <div style={{ background: '#FEE2E2', border: `1.5px solid ${P.coral}`,
               borderRadius: '10px', padding: '10px 14px', color: '#DC2626',
@@ -96,12 +100,13 @@ export default function OwnerLogin({ onSuccess, onBack }) {
             </div>
           )}
 
-          <button onClick={handleLogin} style={{
+          <button onClick={handleLogin} disabled={loading} style={{
             ...btn(`linear-gradient(135deg,${P.coral},${P.orange})`),
             width: '100%', justifyContent: 'center',
             padding: '16px', fontSize: '16px', borderRadius: '12px',
+            opacity: loading ? 0.7 : 1,
           }}>
-            🚀 Login to Dashboard
+            {loading ? '⏳ Logging in…' : '🚀 Login to Dashboard'}
           </button>
         </div>
 
