@@ -17,6 +17,9 @@ export default function App() {
     let loadedOrds  = false
     const checkReady = () => { if (loadedProds && loadedOrds) setReady(true) }
 
+    // Sign in anonymously FIRST, then start listeners
+    signInCustomer().catch(() => {}).finally(() => {
+
     const unsubProds = dbListen('products', (data) => {
       if (data) {
         setProducts(Array.isArray(data) ? data : Object.values(data))
@@ -41,6 +44,7 @@ export default function App() {
     const unsubAuth = onOwnerAuthChange((user) => {
       if (user && user.email && mode === 'ownerLogin') setMode('owner')
     })
+  })
 
     return () => { unsubProds(); unsubOrds(); unsubAuth() }
   }, [])
