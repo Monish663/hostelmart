@@ -19,7 +19,7 @@ export const CAT = {
 
 /* ─── Owner Credentials (change these!) ──────────────────── */
 export const OWNER_ID  = 'admin'
-export const OWNER_PWD = 'cseisbest007'
+export const OWNER_PWD = 'cseisbest00123'
 
 /* ─── Unique ID generator ─────────────────────────────────── */
 export const uid = () => '' + Date.now() + Math.random().toString(36).slice(2, 7)
