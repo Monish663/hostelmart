@@ -10,7 +10,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
   const [search, setSearch]     = useState('')
   const [cart, setCart]         = useState([])
   const [room, setRoom]         = useState('')
-  const [name, setName]         = useState(customer?.displayPhone || '')
+  const [name, setName]         = useState('')
   const [note, setNote]         = useState('')
   const [myRoom, setMyRoom]     = useState('')
   const [selfPickup, setSelfPickup] = useState(false)
@@ -27,7 +27,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
   const DELIVERY_CHARGE = selfPickup ? 0 : (['1','2','3'].includes(room.trim().charAt(0)) ? 2 : 5)
   const total         = subtotal + DELIVERY_CHARGE
   const cartCount     = cart.reduce((s, c) => s + c.qty, 0)
-  const myOrders      = orders.filter(o => o.roomNumber === (selfPickup ? 'PICKUP-'+customer?.displayPhone : myRoom) && myRoom.trim())
+  const myOrders      = orders.filter(o => o.roomNumber === myRoom && myRoom.trim())
 
   const addToCart = (p) => setCart(prev => {
     const ex = prev.find(c => c.id === p.id)
@@ -43,17 +43,6 @@ export default function CustomerPanel({ products, orders, onBack }) {
     if (!name.trim()) return alert('Please enter your name')
     if (custPhone.replace(/\D/g,'').length !== 10) return alert('Please enter a valid 10-digit mobile number')
     if (cart.length===0) return alert('Your cart is empty')
-
-    // Security: verify prices match actual product prices before submitting
-    for (const item of cart) {
-      const realProduct = products.find(p => p.id === item.id)
-      if (!realProduct || item.price !== realProduct.price) {
-        return alert('Something went wrong. Please refresh and try again.')
-      }
-      if (item.qty > realProduct.stock) {
-        return alert(`Only ${realProduct.stock} units of ${item.name} available.`)
-      }
-    }
     const ord = {
       id: uid(),
       roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
