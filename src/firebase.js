@@ -1,11 +1,10 @@
 import { initializeApp } from 'firebase/app'
-import { getDatabase, ref, set, get, onValue } from 'firebase/database'
+import { getDatabase, ref, set, get, onValue, push } from 'firebase/database'
 import {
   getAuth,
   signInWithEmailAndPassword,
   signOut,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
+  signInAnonymously,
   onAuthStateChanged,
 } from 'firebase/auth'
 
@@ -23,48 +22,35 @@ const app      = initializeApp(firebaseConfig)
 const database = getDatabase(app)
 export const auth = getAuth(app)
 
-/* Database helpers */
+/* ── Database helpers ── */
 export const dbSet = async (path, data) => {
   await set(ref(database, path), data)
 }
+
 export const dbGet = async (path) => {
   const snapshot = await get(ref(database, path))
   return snapshot.exists() ? snapshot.val() : null
 }
+
 export const dbListen = (path, callback) => {
   return onValue(ref(database, path), (snapshot) => {
     callback(snapshot.exists() ? snapshot.val() : null)
   })
 }
 
-/* Owner Auth - email/password via Firebase Auth - no password in code */
-export const ownerLogin = (email, password) =>
-  signInWithEmailAndPassword(auth, email, password)
+/* ── Append a single order securely (cannot overwrite existing) ── */
+export const dbAppendOrder = async (order) => {
+  // Write to orders/{orderId} — rules block any edit to existing orders
+  await set(ref(database, `orders/${order.id}`), order)
+}
 
+/* ── Owner Auth — email/password, never stored in code ── */
+export const ownerLogin  = (email, password) => signInWithEmailAndPassword(auth, email, password)
 export const ownerLogout = () => signOut(auth)
+export const onOwnerAuthChange = (callback) => onAuthStateChanged(auth, callback)
 
-export const onOwnerAuthChange = (callback) =>
-  onAuthStateChanged(auth, callback)
-
-/* Customer Phone OTP Auth */
-export const setupRecaptcha = (elementId) => {
-  if (window.recaptchaVerifier) {
-    try { window.recaptchaVerifier.clear() } catch(e) {}
-    window.recaptchaVerifier = null
-  }
-  window.recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
-    size: 'invisible',
-    callback: () => {},
-  })
-  return window.recaptchaVerifier
-}
-
-export const sendOtp = async (phoneNumber) => {
-  const verifier = setupRecaptcha('recaptcha-container')
-  const confirmation = await signInWithPhoneNumber(auth, phoneNumber, verifier)
-  return confirmation
-}
-
+/* ── Customer Auth — anonymous token so rules can verify real users ── */
+export const signInCustomer = () => signInAnonymously(auth)
 export const customerLogout = () => signOut(auth)
 
 export { database }

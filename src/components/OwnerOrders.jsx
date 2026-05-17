@@ -3,13 +3,13 @@ import { P } from '../constants.js'
 import { btn, card } from '../styles.js'
 import Badge from './Badge.jsx'
 
-export default function OwnerOrders({ orders, saveOrds, products, saveProds }) {
+export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, products, saveProds }) {
   const [filter, setFilter] = useState('all')
 
   const visible = filter === 'all' ? orders : orders.filter(o => o.status === filter)
 
   const setStatus = (id, newStatus) => {
-    // ── Deduct stock from inventory when order is confirmed ──
+    // Deduct stock when confirmed
     if (newStatus === 'confirmed') {
       const order = orders.find(o => o.id === id)
       if (order) {
@@ -18,14 +18,15 @@ export default function OwnerOrders({ orders, saveOrds, products, saveProds }) {
           if (orderedItem) return { ...p, stock: Math.max(0, p.stock - orderedItem.qty) }
           return p
         })
-        saveProds(updatedProducts)
+        updateOrderStatus(id, newStatus, updatedProducts)
+        return
       }
     }
-    saveOrds(orders.map(o => o.id === id ? { ...o, status: newStatus } : o))
+    updateOrderStatus(id, newStatus, null)
   }
 
   const del = (id) => {
-    if (window.confirm('Delete this order?')) saveOrds(orders.filter(o => o.id !== id))
+    if (window.confirm('Delete this order?')) deleteOrder(id)
   }
 
   return (

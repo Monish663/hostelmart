@@ -6,7 +6,7 @@ import OwnerStock   from './OwnerStock.jsx'
 import OwnerOrders  from './OwnerOrders.jsx'
 import OwnerHistory from './OwnerHistory.jsx'
 
-export default function OwnerPanel({ products, orders, saveProds, saveOrds, onLogout }) {
+export default function OwnerPanel({ products, orders, saveProds, updateOrderStatus, deleteOrder, onLogout }) {
   const [tab, setTab] = useState('dash')
   const pending = orders.filter(o => o.status === 'pending').length
 
@@ -62,7 +62,7 @@ export default function OwnerPanel({ products, orders, saveProds, saveOrds, onLo
       <div style={{ padding:'24px', maxWidth:'960px', margin:'0 auto' }}>
         {tab === 'dash'    && <OwnerDash    products={products} orders={orders} />}
         {tab === 'stock'   && <OwnerStock   products={products} saveProds={saveProds} />}
-        {tab === 'orders'  && <OwnerOrders  orders={orders} saveOrds={saveOrds} products={products} saveProds={saveProds} />}
+        {tab === 'orders'  && <OwnerOrders  orders={orders} updateOrderStatus={updateOrderStatus} deleteOrder={deleteOrder} products={products} saveProds={saveProds} />}
         {tab === 'history' && <OwnerHistory orders={orders} />}
       </div>
     </div>

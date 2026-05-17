@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { P, CAT, uid } from '../constants.js'
 import { btn, card, inp } from '../styles.js'
 import Badge from './Badge.jsx'
+import { dbAppendOrder } from '../firebase.js'
 
-export default function CustomerPanel({ products, orders, saveOrds, onBack, customer }) {
+export default function CustomerPanel({ products, orders, onBack }) {
   const [tab, setTab]           = useState('shop')
   const [catFilter, setCatFilter] = useState('All')
   const [search, setSearch]     = useState('')
@@ -30,17 +31,12 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
 
   const addToCart = (p) => setCart(prev => {
     const ex = prev.find(c => c.id === p.id)
-    if (ex) {
-      if (ex.qty >= p.stock) return prev  // stop at stock limit
-      return prev.map(c => c.id === p.id ? { ...c, qty: c.qty + 1 } : c)
-    }
+    if (ex) return prev.map(c => c.id === p.id ? { ...c, qty: c.qty + 1 } : c)
     return [...prev, { ...p, qty: 1 }]
   })
 
-  const adjCart = (id, d, maxStock) =>
-    setCart(prev => prev.map(c => c.id===id
-      ? { ...c, qty: Math.min(maxStock, Math.max(0, c.qty + d)) }
-      : c).filter(c => c.qty > 0))
+  const adjCart = (id, d) =>
+    setCart(prev => prev.map(c => c.id===id ? { ...c, qty:Math.max(0,c.qty+d) } : c).filter(c => c.qty > 0))
 
   const placeOrder = async () => {
     if (!selfPickup && !room.trim()) return alert('Please enter your room number')
@@ -62,7 +58,7 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
       status: 'pending',
       timestamp: Date.now(),
     }
-    await saveOrds([...orders, ord])
+    await dbAppendOrder(ord)
     setCart([])
     setMyRoom(room.trim())
     setRoom(''); setName(''); setNote('')
@@ -176,16 +172,13 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
                                 ＋ Add to Cart
                               </button>
                             : <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                                <button onClick={() => adjCart(p.id,-1,p.stock)} style={{
+                                <button onClick={() => adjCart(p.id,-1)} style={{
                                   ...btn(P.coral,'white',true), width:'36px',height:'36px',
                                   padding:0,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'20px' }}>−</button>
                                 <span style={{ flex:1,textAlign:'center',fontWeight:'900',fontSize:'18px' }}>{inCart.qty}</span>
-                                <button onClick={() => adjCart(p.id,+1,p.stock)}
-                                  disabled={inCart.qty >= p.stock}
-                                  style={{
-                                  ...btn(inCart.qty >= p.stock ? '#E5E7EB' : P.teal, inCart.qty >= p.stock ? P.gray : 'white',true), width:'36px',height:'36px',
-                                  padding:0,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'20px',
-                                  cursor: inCart.qty >= p.stock ? 'not-allowed' : 'pointer' }}>＋</button>
+                                <button onClick={() => adjCart(p.id,+1)} style={{
+                                  ...btn(P.teal,'white',true), width:'36px',height:'36px',
+                                  padding:0,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'20px' }}>＋</button>
                               </div>
                           }
                         </div>
@@ -233,16 +226,13 @@ export default function CustomerPanel({ products, orders, saveOrds, onBack, cust
                           <div style={{ color:P.gray, fontSize:'12px' }}>₹{c.price}/{c.unit}</div>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                          <button onClick={() => adjCart(c.id,-1,c.stock)} style={{
+                          <button onClick={() => adjCart(c.id,-1)} style={{
                             ...btn(P.coral,'white',true), width:'30px',height:'30px',
                             padding:0,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>−</button>
                           <span style={{ fontWeight:'900', width:'24px', textAlign:'center', fontSize:'16px' }}>{c.qty}</span>
-                          <button onClick={() => adjCart(c.id,+1,c.stock)}
-                            disabled={c.qty >= c.stock}
-                            style={{
-                            ...btn(c.qty >= c.stock ? '#E5E7EB' : P.teal, c.qty >= c.stock ? P.gray : 'white',true), width:'30px',height:'30px',
-                            padding:0,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
-                            cursor: c.qty >= c.stock ? 'not-allowed' : 'pointer' }}>＋</button>
+                          <button onClick={() => adjCart(c.id,+1)} style={{
+                            ...btn(P.teal,'white',true), width:'30px',height:'30px',
+                            padding:0,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>＋</button>
                         </div>
                         <div style={{ fontWeight:'900', fontSize:'17px', color:P.green, minWidth:'60px', textAlign:'right' }}>
                           ₹{c.price * c.qty}

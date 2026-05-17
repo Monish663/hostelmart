@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbSet, dbListen, ownerLogout, onOwnerAuthChange } from './firebase.js'
+import { dbSet, dbListen, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -10,8 +10,6 @@ export default function App() {
   const [products, setProducts]   = useState([])
   const [orders, setOrders]       = useState([])
   const [ready, setReady]         = useState(false)
-  const [ownerLoggedIn, setOwnerLoggedIn] = useState(false)
-  const [customer, setCustomer]   = useState(null)
 
   /* Real-time Firebase listeners */
   useEffect(() => {
@@ -30,30 +28,44 @@ export default function App() {
     })
 
     const unsubOrds = dbListen('orders', (data) => {
-      if (data) setOrders(Array.isArray(data) ? data : Object.values(data))
-      else setOrders([])
+      if (data) {
+        const arr = Array.isArray(data) ? data : Object.values(data)
+        setOrders(arr.filter(Boolean))
+      } else {
+        setOrders([])
+      }
       loadedOrds = true; checkReady()
     })
 
     /* Track owner Firebase Auth state */
     const unsubAuth = onOwnerAuthChange((user) => {
-      setOwnerLoggedIn(!!user)
-      if (user && mode === 'ownerLogin') setMode('owner')
+      if (user && user.email && mode === 'ownerLogin') setMode('owner')
     })
 
     return () => { unsubProds(); unsubOrds(); unsubAuth() }
   }, [])
 
   const saveProds = (p) => dbSet('products', p)
-  const saveOrds  = (o) => dbSet('orders', o)
+
+  /* Owner updates order status only — never replaces whole orders array */
+  const updateOrderStatus = (id, status, updatedProductsIfAny) => {
+    dbSet(`orders/${id}/status`, status)
+    if (updatedProductsIfAny) saveProds(updatedProductsIfAny)
+  }
+
+  const deleteOrder = (id) => dbSet(`orders/${id}`, null)
 
   const handleOwnerLogout = async () => {
     await ownerLogout()
     setMode('home')
   }
 
-  const handleCustomerSuccess = (customerData) => {
-    setCustomer(customerData)
+  const handleCustomerEnter = async () => {
+    try {
+      await signInCustomer()   // get anonymous auth token
+    } catch(e) {
+      console.error('Anonymous auth failed', e)
+    }
     setMode('customer')
   }
 
@@ -69,10 +81,7 @@ export default function App() {
   )
 
   if (mode === 'ownerLogin') return (
-    <OwnerLogin
-      onSuccess={() => setMode('owner')}
-      onBack={() => setMode('home')}
-    />
+    <OwnerLogin onSuccess={() => setMode('owner')} onBack={() => setMode('home')} />
   )
 
   if (mode === 'owner') return (
@@ -80,7 +89,8 @@ export default function App() {
       products={products}
       orders={orders}
       saveProds={saveProds}
-      saveOrds={saveOrds}
+      updateOrderStatus={updateOrderStatus}
+      deleteOrder={deleteOrder}
       onLogout={handleOwnerLogout}
     />
   )
@@ -89,7 +99,6 @@ export default function App() {
     <CustomerPanel
       products={products}
       orders={orders}
-      saveOrds={saveOrds}
       onBack={() => setMode('home')}
     />
   )
@@ -117,12 +126,12 @@ export default function App() {
 
       <div style={{ display:'flex', gap:'24px', flexWrap:'wrap', justifyContent:'center' }}>
         {[
-          { label:'Shop Owner',  sub:'Manage inventory & fulfil orders', emoji:'👨‍💼',
-            grad:`linear-gradient(135deg,${P.coral},${P.orange})`, m:'ownerLogin' },
-          { label:'Customer',  sub:'Browse & order to your room',  emoji:'🛍️',
-            grad:`linear-gradient(135deg,${P.teal},${P.blue})`,  m:'customer' },
-        ].map(({ label, sub, emoji, grad, m }) => (
-          <div key={m} onClick={() => setMode(m)} style={{
+          { label:'Shop Owner', sub:'Manage inventory & fulfil orders', emoji:'👨‍💼',
+            grad:`linear-gradient(135deg,${P.coral},${P.orange})`, action: () => setMode('ownerLogin') },
+          { label:'Customer',   sub:'Browse & order to your room',      emoji:'🛍️',
+            grad:`linear-gradient(135deg,${P.teal},${P.blue})`,   action: handleCustomerEnter },
+        ].map(({ label, sub, emoji, grad, action }) => (
+          <div key={label} onClick={action} style={{
             background:grad, color:'white', borderRadius:'24px',
             padding:'44px 52px', cursor:'pointer', textAlign:'center',
             minWidth:'250px', boxShadow:'0 10px 32px rgba(0,0,0,0.18)',
@@ -138,7 +147,7 @@ export default function App() {
       </div>
 
       <p style={{ marginTop:'48px', color:'#B0B0B0', fontSize:'13px', textAlign:'center' }}>
-        🏠 Hostel Grocery Service &nbsp;·&nbsp; Pay on Delivery &nbsp;·&nbsp; HostelMart v3.0
+        🏠 Hostel Grocery Service &nbsp;·&nbsp; Pay on Delivery &nbsp;·&nbsp; HostelMart v4.0
       </p>
     </div>
   )
