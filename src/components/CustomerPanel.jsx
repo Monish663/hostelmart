@@ -2,32 +2,32 @@ import { useState } from 'react'
 import { P, CAT, uid } from '../constants.js'
 import { btn, card, inp } from '../styles.js'
 import Badge from './Badge.jsx'
-import { dbAppendOrder, dbGet } from '../firebase.js'
+import { dbAppendOrder } from '../firebase.js'
 
 export default function CustomerPanel({ products, orders, onBack }) {
-  const [tab, setTab]             = useState('shop')
+  const [tab, setTab]           = useState('shop')
   const [catFilter, setCatFilter] = useState('All')
-  const [search, setSearch]       = useState('')
-  const [cart, setCart]           = useState([])
-  const [room, setRoom]           = useState('')
-  const [name, setName]           = useState('')
-  const [note, setNote]           = useState('')
-  const [myRoom, setMyRoom]       = useState('')
+  const [search, setSearch]     = useState('')
+  const [cart, setCart]         = useState([])
+  const [room, setRoom]         = useState('')
+  const [name, setName]         = useState('')
+  const [note, setNote]         = useState('')
+  const [custPhone, setCustPhone] = useState('')
+  const [myRoom, setMyRoom]     = useState('')
   const [selfPickup, setSelfPickup] = useState(false)
-  const [success, setSuccess]     = useState(false)
-  const [placing, setPlacing]     = useState(false)
+  const [success, setSuccess]   = useState(false)
 
-  const inStock = products.filter(p => p.stock > 0)
-  const cats    = ['All', ...Object.keys(CAT)]
-  const shown   = inStock.filter(p =>
+  const inStock  = products.filter(p => p.stock > 0)
+  const cats     = ['All', ...Object.keys(CAT)]
+  const shown    = inStock.filter(p =>
     (catFilter === 'All' || p.cat === catFilter) &&
     p.name.toLowerCase().includes(search.toLowerCase())
   )
-  const subtotal        = cart.reduce((s, c) => s + c.price * c.qty, 0)
+  const subtotal      = cart.reduce((s, c) => s + c.price * c.qty, 0)
   const DELIVERY_CHARGE = selfPickup ? 0 : (['1','2','3'].includes(room.trim().charAt(0)) ? 2 : 5)
-  const total           = subtotal + DELIVERY_CHARGE
-  const cartCount       = cart.reduce((s, c) => s + c.qty, 0)
-  const myOrders        = orders.filter(o => o.roomNumber === myRoom && myRoom.trim())
+  const total         = subtotal + DELIVERY_CHARGE
+  const cartCount     = cart.reduce((s, c) => s + c.qty, 0)
+  const myOrders      = orders.filter(o => o.roomNumber === myRoom && myRoom.trim())
 
   const addToCart = (p) => setCart(prev => {
     const ex = prev.find(c => c.id === p.id)
@@ -36,78 +36,43 @@ export default function CustomerPanel({ products, orders, onBack }) {
   })
 
   const adjCart = (id, d) =>
-    setCart(prev => prev.map(c => c.id===id ? { ...c, qty: Math.max(0, c.qty+d) } : c).filter(c => c.qty > 0))
+    setCart(prev => prev.map(c => c.id===id ? { ...c, qty:Math.max(0,c.qty+d) } : c).filter(c => c.qty > 0))
 
   const placeOrder = async () => {
     if (!selfPickup && !room.trim()) return alert('Please enter your room number')
     if (!name.trim()) return alert('Please enter your name')
-    if (cart.length === 0) return alert('Your cart is empty')
+    if (custPhone.replace(/\D/g,'').length !== 10) return alert('Please enter a valid 10-digit mobile number')
+    if (cart.length===0) return alert('Your cart is empty')
 
-    setPlacing(true)
-    try {
-      // ── Re-fetch LIVE inventory from Firebase right at checkout ──
-      // Even if someone intercepts with Burp Suite, Firebase Security Rules
-      // enforce these same checks server-side and will reject bad writes.
-      const liveData = await dbGet('products')
-      const prodMap = {}
-      if (liveData) {
-        const arr = Array.isArray(liveData) ? liveData : Object.values(liveData)
-        arr.filter(Boolean).forEach(p => { prodMap[p.id] = p })
-      }
-
-      for (const item of cart) {
-        const live = prodMap[item.id]
-        if (!live)
-          return alert(`❌ "${item.name}" no longer exists in inventory. Please refresh.`)
-        if (live.price !== item.price)
-          return alert(`❌ Price changed for "${item.name}" (now ₹${live.price}). Please refresh and re-add.`)
-        if (live.stock < item.qty)
-          return alert(`❌ Only ${live.stock} unit(s) of "${item.name}" available. Please adjust your cart.`)
-        if (item.qty < 1 || item.qty > 20)
-          return alert(`❌ Invalid quantity for "${item.name}". Max 20 per item.`)
-      }
-
-      const ord = {
-        id:             uid(),
-        roomNumber:     selfPickup ? 'SELF PICKUP' : room.trim().slice(0, 10),
-        customerName:   name.trim().slice(0, 60),
-        note:           note.trim().slice(0, 200),
-        selfPickup,
-        deliveryCharge: DELIVERY_CHARGE,
-        items: cart.map(c => ({
-          productId: c.id,
-          name:      c.name,
-          price:     c.price,   // Firebase rules verify this matches inventory
-          qty:       c.qty,
-          unit:      c.unit,
-          emoji:     c.emoji || '📦',
-        })),
-        total,
-        status:    'pending',
-        timestamp: Date.now(),
-      }
-
-      // Firebase Security Rules will REJECT this write if price or stock
-      // doesn't match inventory — Burp Suite cannot bypass server-side rules
-      await dbAppendOrder(ord)
-
-      setCart([])
-      setMyRoom(selfPickup ? '' : room.trim())
-      setRoom(''); setName(''); setNote('')
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 5000)
-      setTab('myorders')
-
-    } catch (e) {
-      console.error('Order failed:', e)
-      if (e.code === 'PERMISSION_DENIED') {
-        alert('❌ Order rejected by server: price or stock mismatch. Please refresh and try again.')
-      } else {
-        alert('❌ Failed to place order. Please try again.')
-      }
-    } finally {
-      setPlacing(false)
+    // Security: verify every item exists in inventory with correct price and stock
+    for (const item of cart) {
+      const realProduct = products.find(p => p.id === item.id)
+      if (!realProduct) return alert(`${item.name} is no longer available. Please refresh and try again.`)
+      if (item.price !== realProduct.price) return alert('Price mismatch detected. Please refresh and try again.')
+      if (item.qty > realProduct.stock) return alert(`Only ${realProduct.stock} units of ${item.name} available.`)
+      if (item.qty <= 0) return alert('Invalid quantity detected.')
     }
+    const ord = {
+      id: uid(),
+      roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
+      customerName: name.trim(),
+      note: note.trim(),
+      selfPickup,
+      deliveryCharge: DELIVERY_CHARGE,
+      items: cart.map(c => ({
+        productId:c.id, name:c.name, price:c.price, qty:c.qty, unit:c.unit, emoji:c.emoji,
+      })),
+      total,
+      status: 'pending',
+      timestamp: Date.now(),
+    }
+    await dbAppendOrder(ord)
+    setCart([])
+    setMyRoom(selfPickup ? '' : room.trim())
+    setRoom(''); setName(''); setNote('')
+    setSuccess(true)
+    setTimeout(() => setSuccess(false), 5000)
+    setTab('myorders')
   }
 
   const TABS = [
@@ -117,9 +82,12 @@ export default function CustomerPanel({ products, orders, onBack }) {
   ]
 
   return (
-    <div style={{ background:'#FFF8F0', minHeight:'100vh', fontFamily:"'Trebuchet MS','Segoe UI',sans-serif" }}>
+    <div style={{ background:'#FFF8F0', minHeight:'100vh',
+      fontFamily:"'Trebuchet MS','Segoe UI',sans-serif" }}>
 
-      <div style={{ background:`linear-gradient(135deg,${P.teal},${P.blue})`, padding:'16px 24px', color:'white',
+      {/* Header */}
+      <div style={{ background:`linear-gradient(135deg,${P.teal},${P.blue})`,
+        padding:'16px 24px', color:'white',
         display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
           <span style={{ fontSize:'32px' }}>🏪</span>
@@ -131,6 +99,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
         <button onClick={onBack} style={btn('rgba(255,255,255,0.25)','white',true)}>← Home</button>
       </div>
 
+      {/* Tab Bar */}
       <div style={{ display:'flex', background:'#fff', borderBottom:'2px solid #F3F4F6', padding:'0 16px' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -144,6 +113,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
 
       <div style={{ padding:'24px', maxWidth:'960px', margin:'0 auto' }}>
 
+        {/* Success Banner */}
         {success && (
           <div style={{ background:'#D1FAE5', border:`2px solid ${P.green}`, borderRadius:'14px',
             padding:'16px 20px', marginBottom:'20px', color:'#065F46',
@@ -160,6 +130,8 @@ export default function CustomerPanel({ products, orders, onBack }) {
                 onChange={e => setSearch(e.target.value)}
                 style={{ ...inp(), fontSize:'15px', padding:'13px 16px' }} />
             </div>
+
+            {/* Category Filter */}
             <div style={{ display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'12px', marginBottom:'24px' }}>
               {cats.map(c => {
                 const meta = CAT[c]
@@ -171,6 +143,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
                 )
               })}
             </div>
+
             {shown.length === 0
               ? <div style={{ textAlign:'center', padding:'60px', color:P.gray }}>
                   <div style={{ fontSize:'52px', marginBottom:'12px' }}>🔍</div>
@@ -188,7 +161,9 @@ export default function CustomerPanel({ products, orders, onBack }) {
                           <div style={{ fontSize:'52px', lineHeight:1 }}>{p.emoji}</div>
                         </div>
                         <div style={{ padding:'14px' }}>
-                          <div style={{ fontWeight:'800', fontSize:'15px', color:P.dark, marginBottom:'6px' }}>{p.name}</div>
+                          <div style={{ fontWeight:'800', fontSize:'15px', color:P.dark, marginBottom:'6px' }}>
+                            {p.name}
+                          </div>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
                             <div style={{ fontWeight:'900', fontSize:'19px', color:P.green }}>
                               ₹{p.price}
@@ -220,12 +195,15 @@ export default function CustomerPanel({ products, orders, onBack }) {
                   })}
                 </div>
             }
+
+            {/* Floating Cart Button */}
             {cart.length > 0 && (
               <div style={{ position:'sticky', bottom:'20px', marginTop:'28px' }}>
                 <button onClick={() => setTab('cart')} style={{
                   ...btn(`linear-gradient(135deg,${P.teal},${P.blue})`),
                   width:'100%', justifyContent:'center', padding:'18px',
-                  fontSize:'17px', borderRadius:'16px', boxShadow:`0 10px 28px ${P.teal}55`,
+                  fontSize:'17px', borderRadius:'16px',
+                  boxShadow:`0 10px 28px ${P.teal}55`,
                 }}>
                   🛒 View Cart — {cartCount} items &nbsp;·&nbsp; ₹{total}
                 </button>
@@ -269,81 +247,136 @@ export default function CustomerPanel({ products, orders, onBack }) {
                         </div>
                       </div>
                     ))}
+                    {/* Subtotal + Delivery + Total */}
                     <div style={{ borderTop:'2px solid #F3F4F6', paddingTop:'16px' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:'15px', color:P.gray, marginBottom:'8px' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontSize:'15px', color:P.gray, marginBottom:'8px' }}>
                         <span>Subtotal</span><span>₹{subtotal}</span>
                       </div>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:'15px', fontWeight:'700', marginBottom:'10px', color: selfPickup ? P.green : P.orange }}>
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontSize:'15px', fontWeight:'700', marginBottom:'10px',
+                        color: selfPickup ? P.green : P.orange }}>
                         <span>🛵 Delivery Charge</span>
                         <span>{selfPickup ? '🆓 FREE' : `₹${DELIVERY_CHARGE}`}</span>
                       </div>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontWeight:'900', fontSize:'22px', borderTop:'1px solid #F3F4F6', paddingTop:'10px' }}>
-                        <span>Total</span><span style={{ color:P.green }}>₹{total}</span>
+                      {!selfPickup && (
+                        <div style={{ background:'#FFF3CD', border:'1px solid #FFC107',
+                          borderRadius:'8px', padding:'7px 12px', fontSize:'12px',
+                          color:'#856404', marginBottom:'10px', textAlign:'center', fontWeight:'600' }}>
+                          🏠 Rooms 1xx/2xx/3xx = ₹2 &nbsp;·&nbsp; Other rooms = ₹5
+                        </div>
+                      )}
+                      {selfPickup && (
+                        <div style={{ background:'#D1FAE5', border:`1px solid ${P.green}`,
+                          borderRadius:'8px', padding:'7px 12px', fontSize:'12px',
+                          color:'#065F46', marginBottom:'10px', textAlign:'center', fontWeight:'700' }}>
+                          🏃 Self Pickup — No delivery charge!
+                        </div>
+                      )}
+                      <div style={{ display:'flex', justifyContent:'space-between',
+                        fontWeight:'900', fontSize:'22px', borderTop:'1px solid #F3F4F6', paddingTop:'10px' }}>
+                        <span>Total</span>
+                        <span style={{ color:P.green }}>₹{total}</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Pickup / Delivery Toggle */}
                   <div style={{ ...card({ marginBottom:'16px' }) }}>
-                    <h3 style={{ margin:'0 0 14px', fontSize:'16px', color:P.dark, fontWeight:'800' }}>🚚 Delivery Method</h3>
+                    <h3 style={{ margin:'0 0 14px', fontSize:'16px', color:P.dark, fontWeight:'800' }}>
+                      🚚 Delivery Method
+                    </h3>
                     <div style={{ display:'flex', gap:'12px' }}>
                       <div onClick={() => setSelfPickup(false)} style={{
-                        flex:1, border:`2px solid ${!selfPickup?P.teal:'#E5E7EB'}`, borderRadius:'14px',
-                        padding:'14px', cursor:'pointer', textAlign:'center', background: !selfPickup?P.teal+'18':'#fff' }}>
+                        flex:1, border:`2px solid ${!selfPickup ? P.teal : '#E5E7EB'}`,
+                        borderRadius:'14px', padding:'14px', cursor:'pointer', textAlign:'center',
+                        background: !selfPickup ? P.teal+'18' : '#fff', transition:'all 0.2s',
+                      }}>
                         <div style={{ fontSize:'28px', marginBottom:'6px' }}>🏠</div>
-                        <div style={{ fontWeight:'800', color:!selfPickup?P.teal:P.gray, fontSize:'14px' }}>Room Delivery</div>
-                        <div style={{ fontSize:'12px', color:!selfPickup?P.teal:P.gray, marginTop:'3px' }}>₹2–₹5 charge</div>
+                        <div style={{ fontWeight:'800', color: !selfPickup ? P.teal : P.gray, fontSize:'14px' }}>Room Delivery</div>
+                        <div style={{ fontSize:'12px', color: !selfPickup ? P.teal : P.gray, marginTop:'3px' }}>₹2 – ₹5 charge</div>
                       </div>
                       <div onClick={() => setSelfPickup(true)} style={{
-                        flex:1, border:`2px solid ${selfPickup?P.green:'#E5E7EB'}`, borderRadius:'14px',
-                        padding:'14px', cursor:'pointer', textAlign:'center', background: selfPickup?P.green+'18':'#fff' }}>
+                        flex:1, border:`2px solid ${selfPickup ? P.green : '#E5E7EB'}`,
+                        borderRadius:'14px', padding:'14px', cursor:'pointer', textAlign:'center',
+                        background: selfPickup ? P.green+'18' : '#fff', transition:'all 0.2s',
+                      }}>
                         <div style={{ fontSize:'28px', marginBottom:'6px' }}>🏃</div>
-                        <div style={{ fontWeight:'800', color:selfPickup?P.green:P.gray, fontSize:'14px' }}>Self Pickup</div>
-                        <div style={{ fontSize:'12px', color:P.green, fontWeight:'700', marginTop:'3px' }}>FREE</div>
+                        <div style={{ fontWeight:'800', color: selfPickup ? P.green : P.gray, fontSize:'14px' }}>Self Pickup</div>
+                        <div style={{ fontSize:'12px', color: P.green, fontWeight:'700', marginTop:'3px' }}>FREE</div>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ ...card({ border:`2px solid ${selfPickup?P.green:P.teal}` }) }}>
-                    <h3 style={{ color:selfPickup?P.green:P.teal, margin:'0 0 18px', fontSize:'18px' }}>
+                  {/* Order Details Form — NO mobile number */}
+                  <div style={{ ...card({ border:`2px solid ${selfPickup ? P.green : P.teal}` }) }}>
+                    <h3 style={{ color: selfPickup ? P.green : P.teal, margin:'0 0 18px', fontSize:'18px' }}>
                       {selfPickup ? '🏃 Pickup Details' : '📍 Delivery Details'}
                     </h3>
                     <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
                       {!selfPickup && (
                         <div>
-                          <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>🏠 Room Number *</label>
-                          <input type="text" placeholder="e.g. 201" value={room}
-                            onChange={e => setRoom(e.target.value.slice(0,10))}
+                          <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
+                            🏠 Room Number *
+                          </label>
+                          <input type="text" placeholder="Enter your room number (e.g. 201)"
+                            value={room} onChange={e => setRoom(e.target.value)}
                             style={{ ...inp(P.teal), fontSize:'16px', fontWeight:'700', padding:'14px 16px' }} />
                         </div>
                       )}
                       <div>
-                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>👤 Your Name *</label>
-                        <input type="text" placeholder="Enter your name" value={name}
-                          onChange={e => setName(e.target.value.slice(0,60))}
-                          style={inp(selfPickup?P.green:P.teal)} />
+                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
+                          👤 Your Name *
+                        </label>
+                        <input type="text" placeholder="Enter your name (required)"
+                          value={name} onChange={e => setName(e.target.value)}
+                          style={{ ...inp(selfPickup ? P.green : P.teal) }} />
                       </div>
                       <div>
-                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>📝 Special Instructions (optional)</label>
-                        <input type="text" placeholder="Any special requests?" value={note}
-                          onChange={e => setNote(e.target.value.slice(0,200))} style={inp()} />
+                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
+                          📱 Mobile Number *
+                        </label>
+                        <div style={{ display:'flex', gap:'10px' }}>
+                          <div style={{ background:P.lgray, border:`2px solid ${P.teal}`,
+                            borderRadius:'12px', padding:'11px 14px', fontWeight:'800',
+                            fontSize:'14px', color:P.dark, flexShrink:0 }}>+91</div>
+                          <input type="tel" placeholder="9876543210 (required)"
+                            value={custPhone}
+                            onChange={e => setCustPhone(e.target.value.replace(/\D/g,'').slice(0,10))}
+                            style={{ ...inp(P.teal), fontSize:'16px', fontWeight:'700',
+                              letterSpacing:'2px', flex:1 }}
+                            maxLength={10} required />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
+                          📝 Special Instructions (optional)
+                        </label>
+                        <input type="text" placeholder="Any special requests?"
+                          value={note} onChange={e => setNote(e.target.value)} style={inp()} />
                       </div>
                     </div>
+
                     {selfPickup && (
-                      <div style={{ background:'#D1FAE5', border:`1.5px solid ${P.green}`, borderRadius:'10px',
-                        padding:'12px 16px', marginTop:'16px', color:'#065F46', fontWeight:'700', fontSize:'13px', textAlign:'center' }}>
+                      <div style={{ background:'#D1FAE5', border:`1.5px solid ${P.green}`,
+                        borderRadius:'10px', padding:'12px 16px', marginTop:'16px',
+                        color:'#065F46', fontWeight:'700', fontSize:'13px', textAlign:'center' }}>
                         🏃 Come to the shop to collect your order. No delivery charge!
                       </div>
                     )}
-                    <button onClick={placeOrder} disabled={placing} style={{
-                      ...btn(selfPickup?`linear-gradient(135deg,${P.green},${P.teal})`:`linear-gradient(135deg,${P.coral},${P.orange})`),
-                      width:'100%', justifyContent:'center', padding:'18px', fontSize:'17px',
-                      borderRadius:'14px', marginTop:'20px', opacity: placing ? 0.7 : 1,
-                      boxShadow:`0 8px 24px ${selfPickup?P.green:P.coral}55`,
+
+                    <button onClick={placeOrder} style={{
+                      ...btn(selfPickup
+                        ? `linear-gradient(135deg,${P.green},${P.teal})`
+                        : `linear-gradient(135deg,${P.coral},${P.orange})`),
+                      width:'100%', justifyContent:'center', padding:'18px',
+                      fontSize:'17px', borderRadius:'14px', marginTop:'20px',
+                      boxShadow:`0 8px 24px ${selfPickup ? P.green : P.coral}55`,
                     }}>
-                      {placing ? '⏳ Verifying & placing order…' : `${selfPickup?'🏃 Place Pickup Order':'🚀 Place Order'} · ₹${total}`}
+                      {selfPickup ? '🏃 Place Pickup Order' : '🚀 Place Order'} &nbsp;·&nbsp; ₹{total}
                     </button>
                     <p style={{ color:P.gray, fontSize:'13px', textAlign:'center', marginTop:'12px' }}>
-                      🔒 Prices & stock verified at checkout · 💳 Pay on {selfPickup?'pickup':'delivery'}
+                      💳 Pay on {selfPickup ? 'pickup at shop' : 'delivery'}
                     </p>
                   </div>
                 </>
@@ -355,46 +388,59 @@ export default function CustomerPanel({ products, orders, onBack }) {
         {tab === 'myorders' && (
           <div>
             <h2 style={{ color:P.dark, margin:'0 0 20px', fontFamily:'Georgia,serif', fontSize:'26px' }}>My Orders</h2>
+
             <div style={{ ...card({ border:`2px solid ${P.purple}`, marginBottom:'24px' }) }}>
               <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'10px' }}>
                 🏠 Enter your room number to track orders
               </label>
-              <input type="text" placeholder="Room number (e.g. 201)" value={myRoom}
-                onChange={e => setMyRoom(e.target.value)}
+              <input type="text" placeholder="Room number (e.g. 201)"
+                value={myRoom} onChange={e => setMyRoom(e.target.value)}
                 style={{ ...inp(P.purple), fontSize:'16px', fontWeight:'700', padding:'14px 16px' }} />
             </div>
+
             {myRoom.trim() && myOrders.length === 0 && (
               <div style={{ ...card({ textAlign:'center', padding:'52px' }), color:P.gray }}>
                 <div style={{ fontSize:'52px', marginBottom:'12px' }}>📭</div>
                 <div style={{ fontSize:'16px' }}>No orders found for Room {myRoom}</div>
-                <button onClick={() => setTab('shop')} style={{ ...btn(P.teal), marginTop:'20px' }}>🛍️ Start Shopping</button>
+                <button onClick={() => setTab('shop')} style={{ ...btn(P.teal), marginTop:'20px' }}>
+                  🛍️ Start Shopping
+                </button>
               </div>
             )}
+
             {myOrders.length > 0 && (
               <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
                 {[...myOrders].reverse().map(o => {
-                  const sc = o.status==='delivered'?P.green:o.status==='confirmed'?P.blue:P.amber
+                  const statusColor = o.status==='delivered'?P.green:o.status==='confirmed'?P.blue:P.amber
                   return (
-                    <div key={o.id} style={{ ...card({ borderLeft:`5px solid ${sc}` }) }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'14px', flexWrap:'wrap', gap:'8px' }}>
+                    <div key={o.id} style={{ ...card({ borderLeft:`5px solid ${statusColor}` }) }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start',
+                        marginBottom:'14px', flexWrap:'wrap', gap:'8px' }}>
                         <div>
                           <div style={{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap' }}>
                             <span style={{ fontWeight:'800', fontSize:'17px' }}>Order #{o.id.slice(-6)}</span>
                             <Badge status={o.status} />
                           </div>
-                          <div style={{ color:P.gray, fontSize:'12px', marginTop:'4px' }}>{new Date(o.timestamp).toLocaleString()}</div>
+                          <div style={{ color:P.gray, fontSize:'12px', marginTop:'4px' }}>
+                            {new Date(o.timestamp).toLocaleString()}
+                          </div>
                         </div>
                         <div style={{ fontWeight:'900', fontSize:'24px', color:P.green }}>₹{o.total}</div>
                       </div>
+
                       <div style={{ background:'#F3F4F6', borderRadius:'12px', padding:'14px', marginBottom:'14px' }}>
                         {o.items.map((it, i) => (
-                          <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'14px', padding:'5px 0', borderBottom: i<o.items.length-1?'1px solid #E5E7EB':'none' }}>
+                          <div key={i} style={{ display:'flex', justifyContent:'space-between',
+                            fontSize:'14px', padding:'5px 0',
+                            borderBottom: i<o.items.length-1?'1px solid #E5E7EB':'none' }}>
                             <span>{it.emoji||'📦'} {it.name} × {it.qty}</span>
                             <span style={{ fontWeight:'700' }}>₹{it.price * it.qty}</span>
                           </div>
                         ))}
                       </div>
-                      <div style={{ background:sc+'15', borderRadius:'10px', padding:'12px 16px', color:sc, fontWeight:'700', fontSize:'14px' }}>
+
+                      <div style={{ background:statusColor+'15', borderRadius:'10px', padding:'12px 16px',
+                        color:statusColor, fontWeight:'700', fontSize:'14px' }}>
                         {o.status==='pending'   && '⏳ Order received! The shopkeeper is reviewing your order.'}
                         {o.status==='confirmed' && '🚚 Order confirmed! On its way to your room soon.'}
                         {o.status==='delivered' && '✅ Delivered! Enjoy your groceries! 🎉'}
@@ -404,6 +450,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
                 })}
               </div>
             )}
+
             {!myRoom.trim() && (
               <div style={{ textAlign:'center', padding:'40px', color:P.gray }}>
                 <div style={{ fontSize:'48px', marginBottom:'12px' }}>🏠</div>
