@@ -26,12 +26,7 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
   }
 
   const del = (id) => {
-    if (window.confirm('Delete this order?')) {
-      console.log('Deleting order:', id)
-      deleteOrder(id)
-        .then(() => console.log('Deleted successfully'))
-        .catch(e => console.error('Delete failed:', e))
-    }
+    if (window.confirm('Delete this order?')) deleteOrder(id)
   }
 
   return (
