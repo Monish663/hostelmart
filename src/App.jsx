@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbSet, dbListen, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
+import { dbSet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -38,10 +38,8 @@ export default function App() {
       })
     }
 
-    // Sign in anonymously for customers, then start listeners
     signInCustomer().catch(() => {}).finally(() => startListeners())
 
-    // Track owner auth — when owner logs in, switch to owner mode
     unsubAuth = onOwnerAuthChange((user) => {
       if (user?.email && mode === 'ownerLogin') setMode('owner')
     })
@@ -56,19 +54,19 @@ export default function App() {
     if (updatedProds) await saveProds(updatedProds)
   }
 
+  /* FIXED: now uses dbDeleteOrder with proper Firebase remove() */
   const deleteOrder = async (id) => {
     try {
-      await dbSet(`orders/${id}`, null)
+      await dbDeleteOrder(id)
     } catch(e) {
       console.error('Delete failed:', e)
-      alert('Delete failed. Please try again.')
+      alert('Delete failed: ' + e.message)
     }
   }
 
   const handleOwnerLogout = async () => {
     await ownerLogout()
     setMode('home')
-    // Re-sign in anonymously after owner logs out
     signInCustomer().catch(() => {})
   }
 

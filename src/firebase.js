@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getDatabase, ref, set, get, onValue, push, remove } from 'firebase/database'
+import { getDatabase, ref, set, get, onValue, remove } from 'firebase/database'
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -22,7 +22,6 @@ const app      = initializeApp(firebaseConfig)
 const database = getDatabase(app)
 export const auth = getAuth(app)
 
-/* ── Database helpers ── */
 export const dbSet = async (path, data) => {
   await set(ref(database, path), data)
 }
@@ -38,24 +37,18 @@ export const dbListen = (path, callback) => {
   })
 }
 
-/* ── Append a single order securely (cannot overwrite existing) ── */
 export const dbAppendOrder = async (order) => {
-  // Write to orders/{orderId} — rules block any edit to existing orders
   await set(ref(database, `orders/${order.id}`), order)
 }
 
-/* ── Delete an order properly ── */
+/* FIXED: was "wait" (typo) — now correct "await" */
 export const dbDeleteOrder = async (orderId) => {
-  wait remove(ref(database, `orders/${orderId}`))
+  await remove(ref(database, `orders/${orderId}`))
 }
 
-/* ── Owner Auth — email/password, never stored in code ── */
 export const ownerLogin  = (email, password) => signInWithEmailAndPassword(auth, email, password)
 export const ownerLogout = () => signOut(auth)
 export const onOwnerAuthChange = (callback) => onAuthStateChanged(auth, callback)
-
-/* ── Customer Auth — anonymous token so rules can verify real users ── */
 export const signInCustomer = () => signInAnonymously(auth)
-export const customerLogout = () => signOut(auth)
 
 export { database }
