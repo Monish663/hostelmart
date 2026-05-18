@@ -114,7 +114,7 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
                       ✅ Confirm & Deduct Stock
                     </button>
                   )}
-                  {(o.status === 'pending' || o.status === 'confirmed') && (
+                  {o.status !== 'delivered' && (
                     <button onClick={() => setStatus(o.id, 'delivered')} style={btn(P.green)}>
                       🚀 Mark Delivered
                     </button>
