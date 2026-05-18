@@ -14,7 +14,6 @@ export default function CustomerPanel({ products, orders, onBack }) {
   const [note, setNote]         = useState('')
   const [myRoom, setMyRoom]     = useState('')
   const [selfPickup, setSelfPickup] = useState(false)
-  const [custPhone, setCustPhone]   = useState('')
   const [success, setSuccess]   = useState(false)
 
   const inStock  = products.filter(p => p.stock > 0)
@@ -41,7 +40,6 @@ export default function CustomerPanel({ products, orders, onBack }) {
   const placeOrder = async () => {
     if (!selfPickup && !room.trim()) return alert('Please enter your room number')
     if (!name.trim()) return alert('Please enter your name')
-    if (custPhone.replace(/\D/g,'').length !== 10) return alert('Please enter a valid 10-digit mobile number')
     if (cart.length===0) return alert('Your cart is empty')
 
     // Security: verify every item exists in inventory with correct price and stock
@@ -56,7 +54,6 @@ export default function CustomerPanel({ products, orders, onBack }) {
       id: uid(),
       roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
       customerName: name.trim(),
-      phone: custPhone.replace(/\D/g,''),
       note: note.trim(),
       selfPickup,
       deliveryCharge: DELIVERY_CHARGE,
@@ -69,7 +66,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
     }
     await dbAppendOrder(ord)
     setCart([])
-    setMyRoom(room.trim())
+    setMyRoom(selfPickup ? '' : room.trim())
     setRoom(''); setName(''); setNote('')
     setSuccess(true)
     setTimeout(() => setSuccess(false), 5000)
@@ -119,7 +116,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
           <div style={{ background:'#D1FAE5', border:`2px solid ${P.green}`, borderRadius:'14px',
             padding:'16px 20px', marginBottom:'20px', color:'#065F46',
             fontWeight:'700', display:'flex', alignItems:'center', gap:'12px', fontSize:'16px' }}>
-            🎉 Order placed! The shopkeeper will deliver to Room {myRoom} soon.
+            🎉 Order placed! The shopkeeper will deliver to your room soon.
           </div>
         )}
 
@@ -309,7 +306,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
                     </div>
                   </div>
 
-                  {/* Order Details Form */}
+                  {/* Order Details Form — NO mobile number */}
                   <div style={{ ...card({ border:`2px solid ${selfPickup ? P.green : P.teal}` }) }}>
                     <h3 style={{ color: selfPickup ? P.green : P.teal, margin:'0 0 18px', fontSize:'18px' }}>
                       {selfPickup ? '🏃 Pickup Details' : '📍 Delivery Details'}
@@ -331,23 +328,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
                         </label>
                         <input type="text" placeholder="Enter your name (required)"
                           value={name} onChange={e => setName(e.target.value)}
-                          style={{ ...inp(selfPickup ? P.green : P.teal) }} required />
-                      </div>
-                      <div>
-                        <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
-                          📱 Mobile Number *
-                        </label>
-                        <div style={{ display:'flex', gap:'10px' }}>
-                          <div style={{ background:P.lgray, border:`2px solid ${selfPickup ? P.green : P.teal}`,
-                            borderRadius:'12px', padding:'11px 14px', fontWeight:'800',
-                            fontSize:'14px', color:P.dark, flexShrink:0 }}>+91</div>
-                          <input type="tel" placeholder="9876543210 (required)"
-                            value={custPhone}
-                            onChange={e => setCustPhone(e.target.value.replace(/\D/g,'').slice(0,10))}
-                            style={{ ...inp(selfPickup ? P.green : P.teal), fontSize:'16px',
-                              fontWeight:'700', letterSpacing:'2px', flex:1 }}
-                            maxLength={10} required />
-                        </div>
+                          style={{ ...inp(selfPickup ? P.green : P.teal) }} />
                       </div>
                       <div>
                         <label style={{ fontSize:'13px', fontWeight:'800', color:P.gray, display:'block', marginBottom:'8px' }}>
