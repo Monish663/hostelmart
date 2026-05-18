@@ -46,11 +46,7 @@ export const dbAppendOrder = async (order) => {
 
 /* ── Delete an order properly ── */
 export const dbDeleteOrder = async (orderId) => {
-  console.log('Firebase deleting:', orderId)
-  const r = ref(database, `orders/${orderId}`)
-  console.log('Ref path:', r.toString())
-  await remove(r)
-  console.log('Firebase delete done')
+  wait remove(ref(database, `orders/${orderId}`))
 }
 
 /* ── Owner Auth — email/password, never stored in code ── */
