@@ -8,8 +8,7 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
 
   const visible = filter === 'all' ? orders : orders.filter(o => o.status === filter)
 
-  const setStatus = (id, newStatus) => {
-    // Deduct stock when confirmed
+  const setStatus = async (id, newStatus) => {
     if (newStatus === 'confirmed') {
       const order = orders.find(o => o.id === id)
       if (order) {
@@ -18,15 +17,17 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
           if (orderedItem) return { ...p, stock: Math.max(0, p.stock - orderedItem.qty) }
           return p
         })
-        updateOrderStatus(id, newStatus, updatedProducts)
+        await updateOrderStatus(id, newStatus, updatedProducts)
         return
       }
     }
-    updateOrderStatus(id, newStatus, null)
+    await updateOrderStatus(id, newStatus, null)
   }
 
-  const del = (id) => {
-    if (window.confirm('Delete this order?')) deleteOrder(id)
+  const del = async (id) => {
+    if (window.confirm('Delete this order?')) {
+      await deleteOrder(id)
+    }
   }
 
   return (

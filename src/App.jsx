@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbSet, dbListen, ownerLogout, onOwnerAuthChange, signInCustomer, dbDeleteOrder } from './firebase.js'
+import { dbSet, dbListen, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -12,38 +12,38 @@ export default function App() {
   const [ready, setReady]       = useState(false)
 
   useEffect(() => {
-    // Step 1: Sign in anonymously (needed for orders read/write)
-    signInCustomer().catch(() => {})
+    let unsubProds = () => {}
+    let unsubOrds  = () => {}
+    let unsubAuth  = () => {}
 
-    // Step 2: Listen to products — read is PUBLIC, loads instantly
-    const unsubProds = dbListen('products', (data) => {
-      if (data) {
-        const arr = Array.isArray(data) ? data : Object.values(data)
-        setProducts(arr.filter(Boolean))
-      } else {
-        // First time ever — seed the database
-        dbSet('products', INIT_PRODUCTS)
-        setProducts(INIT_PRODUCTS)
-      }
-      // Show app as soon as products arrive — don't wait for orders
-      setReady(true)
-    })
+    const startListeners = () => {
+      unsubProds = dbListen('products', (data) => {
+        if (data) {
+          const arr = Array.isArray(data) ? data : Object.values(data)
+          setProducts(arr.filter(Boolean))
+        } else {
+          dbSet('products', INIT_PRODUCTS)
+          setProducts(INIT_PRODUCTS)
+        }
+        setReady(true)
+      })
 
-    // Step 3: Listen to orders in background
-    const unsubOrds = dbListen('orders', (data) => {
-      if (data) {
-        const arr = Array.isArray(data) ? data : Object.values(data)
-        setOrders(arr.filter(Boolean))
-      } else {
-        setOrders([])
-      }
-    })
+      unsubOrds = dbListen('orders', (data) => {
+        if (data) {
+          const arr = Array.isArray(data) ? data : Object.values(data)
+          setOrders(arr.filter(Boolean))
+        } else {
+          setOrders([])
+        }
+      })
+    }
 
-    // Step 4: Track owner login state
-    const unsubAuth = onOwnerAuthChange((user) => {
-      if (user && user.email) {
-        if (mode === 'ownerLogin') setMode('owner')
-      }
+    // Sign in anonymously for customers, then start listeners
+    signInCustomer().catch(() => {}).finally(() => startListeners())
+
+    // Track owner auth — when owner logs in, switch to owner mode
+    unsubAuth = onOwnerAuthChange((user) => {
+      if (user?.email && mode === 'ownerLogin') setMode('owner')
     })
 
     return () => { unsubProds(); unsubOrds(); unsubAuth() }
@@ -51,21 +51,27 @@ export default function App() {
 
   const saveProds = (p) => dbSet('products', p)
 
-  const updateOrderStatus = (id, status, updatedProds) => {
-    dbSet(`orders/${id}/status`, status)
-    if (updatedProds) saveProds(updatedProds)
+  const updateOrderStatus = async (id, status, updatedProds) => {
+    await dbSet(`orders/${id}/status`, status)
+    if (updatedProds) await saveProds(updatedProds)
   }
 
-  const deleteOrder = (id) => dbDeleteOrder(id)
+  const deleteOrder = async (id) => {
+    try {
+      await dbSet(`orders/${id}`, null)
+    } catch(e) {
+      console.error('Delete failed:', e)
+      alert('Delete failed. Please try again.')
+    }
+  }
 
   const handleOwnerLogout = async () => {
     await ownerLogout()
-    // Re-sign in as anonymous so customers still work
-    signInCustomer().catch(() => {})
     setMode('home')
+    // Re-sign in anonymously after owner logs out
+    signInCustomer().catch(() => {})
   }
 
-  /* Loading screen — only shows until products arrive (very fast) */
   if (!ready) return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center', height:'100vh', background:'#FFF8F0', gap:'16px',
@@ -99,7 +105,6 @@ export default function App() {
     />
   )
 
-  /* Home Screen */
   return (
     <div style={{ background:'#FFF8F0', minHeight:'100vh', display:'flex',
       flexDirection:'column', alignItems:'center', justifyContent:'center',
