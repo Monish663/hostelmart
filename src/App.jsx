@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbSet, dbGet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
+import { dbSet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -49,21 +49,12 @@ export default function App() {
 
   const saveProds = (p) => dbSet('products', p)
 
-  /* FIXED: fetch the full order object, update status, then re-save the whole order.
-     This avoids nested-path write issues with Firebase Realtime Database. */
   const updateOrderStatus = async (id, status, updatedProds) => {
-    try {
-      const existing = await dbGet(`orders/${id}`)
-      if (existing) {
-        await dbSet(`orders/${id}`, { ...existing, status })
-      }
-      if (updatedProds) await saveProds(updatedProds)
-    } catch (e) {
-      console.error('Failed to update order status:', e)
-      alert('Failed to update order: ' + e.message)
-    }
+    await dbSet(`orders/${id}/status`, status)
+    if (updatedProds) await saveProds(updatedProds)
   }
 
+  /* FIXED: now uses dbDeleteOrder with proper Firebase remove() */
   const deleteOrder = async (id) => {
     try {
       await dbDeleteOrder(id)

@@ -38,7 +38,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
     return [...prev, { ...p, qty: 1 }]
   })
 
-  const adjCart = (id, d) =>
+  const adjCart = (id, d, maxStock) =>
     setCart(prev => prev.map(c => c.id===id
       ? { ...c, qty: Math.min(maxStock, Math.max(0, c.qty + d)) }
       : c).filter(c => c.qty > 0))
