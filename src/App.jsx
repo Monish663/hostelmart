@@ -71,9 +71,17 @@ export default function App() {
   useEffect(() => {
     const unsubAuth = onOwnerAuthChange((user) => {
       if (user) {
-        startListeners()
+        
         if (user.email) {
+          startListeners()
           setModeSync('owner')
+        } else {
+          // Anonymous customer — only set customer mode if not already in owner mode
+          if (modeRef.current !== 'owner') {
+            startListeners()
+            setModeSync('customer')
+            setReady(true)
+          }
         }
       } else {
         signInCustomer().catch(e => console.error('signInCustomer error:', e.message))
