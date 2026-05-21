@@ -64,7 +64,7 @@ export default function App() {
         dbSet('products', INIT_PRODUCTS)
         setProducts(INIT_PRODUCTS)
       }
-      setReady(true)
+      if (modeRef.current !== 'ownerLogin') setReady(true)
     })
 
     unsubOrds.current = dbListen('orders', (data) => {
@@ -139,7 +139,7 @@ export default function App() {
   )
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (!ready) return (
+  if (!ready && mode !== 'owner') return (
     <>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
         justifyContent:'center', height:'100vh', background:'#FFF8F0', gap:'16px',

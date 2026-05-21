@@ -97,7 +97,7 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
 
                 {/* Items */}
                 <div style={{ background:P.lgray, borderRadius:'12px', padding:'14px', marginBottom:'14px' }}>
-                  {o.items.map((it, i) => (
+                  {(o.items||[]).map((it, i) => (
                     <div key={i} style={{ display:'flex', justifyContent:'space-between',
                       fontSize:'14px', padding:'5px 0',
                       borderBottom: i < o.items.length-1 ? '1px solid #E5E7EB' : 'none' }}>
