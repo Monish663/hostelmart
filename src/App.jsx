@@ -31,52 +31,73 @@ export default function App() {
   const [orders, setOrders]     = useState([])
   const [ready, setReady]       = useState(false)
 
-  // Use a ref so the auth callback always sees the latest mode
-  const modeRef = useRef(mode)
-  useEffect(() => { modeRef.current = mode }, [mode])
+  // Refs so callbacks always see latest values without stale closures
+  const modeRef      = useRef('home')
+  const unsubProds   = useRef(() => {})
+  const unsubOrds    = useRef(() => {})
 
-  useEffect(() => {
-    let unsubProds = () => {}
-    let unsubOrds  = () => {}
-    let unsubAuth  = () => {}
+  const setModeSync = (m) => { modeRef.current = m; setMode(m) }
 
-    const startListeners = () => {
-      unsubProds = dbListen('products', (data) => {
-        if (data) {
-          const arr = Array.isArray(data) ? data : Object.values(data)
-          setProducts(arr.filter(Boolean))
-        } else {
-          dbSet('products', INIT_PRODUCTS)
-          setProducts(INIT_PRODUCTS)
-        }
-        setReady(true)
-      })
+  // Start DB listeners — called once after any auth session is established
+  const startListeners = () => {
+    // Tear down any existing listeners first
+    unsubProds.current()
+    unsubOrds.current()
 
-      unsubOrds = dbListen('orders', (data) => {
-        if (data) {
-          const arr = Array.isArray(data) ? data : Object.values(data)
-          setOrders(arr.filter(Boolean))
-        } else {
-          setOrders([])
-        }
-      })
-    }
-
-    signInCustomer().catch(() => {}).finally(() => startListeners())
-
-    // Use modeRef to avoid stale closure
-    unsubAuth = onOwnerAuthChange((user) => {
-      if (user?.email && modeRef.current === 'ownerLogin') setMode('owner')
+    unsubProds.current = dbListen('products', (data) => {
+      if (data) {
+        const arr = Array.isArray(data) ? data : Object.values(data)
+        setProducts(arr.filter(Boolean))
+      } else {
+        dbSet('products', INIT_PRODUCTS)
+        setProducts(INIT_PRODUCTS)
+      }
+      setReady(true)
     })
 
-    return () => { unsubProds(); unsubOrds(); unsubAuth() }
+    unsubOrds.current = dbListen('orders', (data) => {
+      if (data) {
+        const arr = Array.isArray(data) ? data : Object.values(data)
+        setOrders(arr.filter(Boolean))
+      } else {
+        setOrders([])
+      }
+    })
+  }
+
+  useEffect(() => {
+    // Watch auth state — this fires immediately with the current user on mount,
+    // and again whenever auth changes (anonymous → owner login → logout etc.)
+    const unsubAuth = onOwnerAuthChange((user) => {
+      if (user) {
+        // Always restart listeners when auth changes so they use the new token
+        startListeners()
+
+        if (user.email) {
+          // Owner is logged in — go to owner dashboard
+          // Only redirect if coming from ownerLogin page (not on page refresh)
+          if (modeRef.current === 'ownerLogin') {
+            setModeSync('owner')
+          }
+        }
+        // anonymous user: listeners started above, stay on current mode
+      } else {
+        // Signed out — sign in anonymously so customers can browse
+        signInCustomer().catch(console.error)
+      }
+    })
+
+    return () => {
+      unsubAuth()
+      unsubProds.current()
+      unsubOrds.current()
+    }
   }, [])
 
   const saveProds = (p) => dbSet('products', p)
 
-  // FIXED: read the full order first, then re-save the whole object with updated status.
-  // This avoids nested-path writes which are blocked by Firebase security rules
-  // ($other: false) and also don't work reliably with RTDB.
+  // Read full order then re-save with new status — never use nested path writes
+  // because Firebase rules block them with $other: false
   const updateOrderStatus = async (id, status, updatedProds) => {
     try {
       const existing = await dbGet(`orders/${id}`)
@@ -84,7 +105,7 @@ export default function App() {
       await dbSet(`orders/${id}`, { ...existing, status })
       if (updatedProds) await saveProds(updatedProds)
     } catch (e) {
-      console.error('Failed to update order status:', e)
+      console.error('Failed to update order:', e)
       alert('Failed to update order: ' + e.message)
     }
   }
@@ -92,18 +113,19 @@ export default function App() {
   const deleteOrder = async (id) => {
     try {
       await dbDeleteOrder(id)
-    } catch(e) {
+    } catch (e) {
       console.error('Delete failed:', e)
       alert('Delete failed: ' + e.message)
     }
   }
 
   const handleOwnerLogout = async () => {
+    setModeSync('home')
     await ownerLogout()
-    setMode('home')
-    signInCustomer().catch(() => {})
+    // ownerLogout triggers onOwnerAuthChange(null) → signInCustomer() → startListeners()
   }
 
+  // ── Loading screen ──────────────────────────────────────────────────────────
   if (!ready) return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center', height:'100vh', background:'#FFF8F0', gap:'16px',
@@ -114,10 +136,15 @@ export default function App() {
     </div>
   )
 
+  // ── Owner login ─────────────────────────────────────────────────────────────
   if (mode === 'ownerLogin') return (
-    <OwnerLogin onSuccess={() => setMode('owner')} onBack={() => setMode('home')} />
+    <OwnerLogin
+      onSuccess={() => setModeSync('owner')}
+      onBack={() => setModeSync('home')}
+    />
   )
 
+  // ── Owner dashboard ─────────────────────────────────────────────────────────
   if (mode === 'owner') return (
     <OwnerPanel
       products={products}
@@ -129,14 +156,16 @@ export default function App() {
     />
   )
 
+  // ── Customer panel ──────────────────────────────────────────────────────────
   if (mode === 'customer') return (
     <CustomerPanel
       products={products}
       orders={orders}
-      onBack={() => setMode('home')}
+      onBack={() => setModeSync('home')}
     />
   )
 
+  // ── Home screen ─────────────────────────────────────────────────────────────
   return (
     <div style={{ background:'#FFF8F0', minHeight:'100vh', display:'flex',
       flexDirection:'column', alignItems:'center', justifyContent:'center',
@@ -162,10 +191,10 @@ export default function App() {
         {[
           { label:'Shop Owner', sub:'Manage inventory & fulfil orders', emoji:'👨‍💼',
             grad:`linear-gradient(135deg,${P.coral},${P.orange})`,
-            action: () => setMode('ownerLogin') },
-          { label:'Customer', sub:'Browse & order to your room', emoji:'🛍️',
+            action: () => setModeSync('ownerLogin') },
+          { label:'Customer',   sub:'Browse & order to your room',      emoji:'🛍️',
             grad:`linear-gradient(135deg,${P.teal},${P.blue})`,
-            action: () => setMode('customer') },
+            action: () => setModeSync('customer') },
         ].map(({ label, sub, emoji, grad, action }) => (
           <div key={label} onClick={action} style={{
             background:grad, color:'white', borderRadius:'24px',
