@@ -33,16 +33,16 @@ export default function App() {
   const [products, setProducts] = useState([])
   const [orders, setOrders]     = useState([])
   const [ready, setReady]       = useState(false)
-  const [debugLog, setDebugLog] = useState([])
+  //const [debugLog, setDebugLog] = useState([])
 
   const modeRef    = useRef('home')
   const unsubProds = useRef(() => {})
   const unsubOrds  = useRef(() => {})
 
-  const log = (msg) => {
-    console.log('[HM]', msg)
-    setDebugLog(prev => [...prev.slice(-12), `${new Date().toLocaleTimeString()} — ${msg}`])
-  }
+  //const log = (msg) => {
+    //console.log('[HM]', msg)
+    //setDebugLog(prev => [...prev.slice(-12), `${new Date().toLocaleTimeString()} — ${msg}`])
+  //}
 
   const setModeSync = (m) => {
     log(`setMode: ${modeRef.current} → ${m}`)
@@ -79,7 +79,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    log('useEffect mount')
+    //log('useEffect mount')
     const unsubAuth = onOwnerAuthChange((user) => {
       if (user) {
         log(`auth: user=${user.uid} email=${user.email || 'anon'} mode=${modeRef.current}`)
@@ -129,14 +129,14 @@ export default function App() {
   }
 
   // ── DEBUG OVERLAY (shown on every screen) ──────────────────────────────────
-  const DebugOverlay = () => (
-    <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:9999,
-      background:'rgba(0,0,0,0.85)', color:'#00ff00', fontSize:'11px',
-      fontFamily:'monospace', padding:'8px 12px', maxHeight:'160px', overflowY:'auto' }}>
-      <strong style={{ color:'#ffff00' }}>mode={mode} ready={String(ready)} prods={products.length} orders={orders.length}</strong>
-      {debugLog.map((l, i) => <div key={i}>{l}</div>)}
-    </div>
-  )
+  //const DebugOverlay = () => (
+    //<div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:9999,
+      //background:'rgba(0,0,0,0.85)', color:'#00ff00', fontSize:'11px',
+      //fontFamily:'monospace', padding:'8px 12px', maxHeight:'160px', overflowY:'auto' }}>
+      //<strong style={{ color:'#ffff00' }}>mode={mode} ready={String(ready)} prods={products.length} orders={orders.length}</strong>
+      //{debugLog.map((l, i) => <div key={i}>{l}</div>)}
+    //</div>
+  //)
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (!ready && mode !== 'owner') return (
@@ -148,14 +148,14 @@ export default function App() {
         <div style={{ fontSize:'20px', fontWeight:'700', color:P.gray }}>Loading HostelMart…</div>
         <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
       </div>
-      <DebugOverlay />
+      //<DebugOverlay />
     </>
   )
 
   if (mode === 'ownerLogin') return (
     <>
       <OwnerLogin onSuccess={() => setModeSync('owner')} onBack={() => setModeSync('home')} />
-      <DebugOverlay />
+      //<DebugOverlay />
     </>
   )
 
@@ -166,14 +166,14 @@ export default function App() {
         saveProds={saveProds} updateOrderStatus={updateOrderStatus}
         deleteOrder={deleteOrder} onLogout={handleOwnerLogout}
       />
-      <DebugOverlay />
+      //<DebugOverlay />
     </>
   )
 
   if (mode === 'customer') return (
     <>
       <CustomerPanel products={products} orders={orders} onBack={() => setModeSync('home')} />
-      <DebugOverlay />
+      //<DebugOverlay />
     </>
   )
 
