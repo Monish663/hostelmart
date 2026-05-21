@@ -1,5 +1,5 @@
-import { useState, useEffect, Component } from 'react'
-import { dbSet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
+import { useState, useEffect, useRef, Component } from 'react'
+import { dbSet, dbGet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -31,6 +31,10 @@ export default function App() {
   const [orders, setOrders]     = useState([])
   const [ready, setReady]       = useState(false)
 
+  // Use a ref so the auth callback always sees the latest mode
+  const modeRef = useRef(mode)
+  useEffect(() => { modeRef.current = mode }, [mode])
+
   useEffect(() => {
     let unsubProds = () => {}
     let unsubOrds  = () => {}
@@ -60,8 +64,9 @@ export default function App() {
 
     signInCustomer().catch(() => {}).finally(() => startListeners())
 
+    // Use modeRef to avoid stale closure
     unsubAuth = onOwnerAuthChange((user) => {
-      if (user?.email && mode === 'ownerLogin') setMode('owner')
+      if (user?.email && modeRef.current === 'ownerLogin') setMode('owner')
     })
 
     return () => { unsubProds(); unsubOrds(); unsubAuth() }
@@ -69,12 +74,21 @@ export default function App() {
 
   const saveProds = (p) => dbSet('products', p)
 
+  // FIXED: read the full order first, then re-save the whole object with updated status.
+  // This avoids nested-path writes which are blocked by Firebase security rules
+  // ($other: false) and also don't work reliably with RTDB.
   const updateOrderStatus = async (id, status, updatedProds) => {
-    await dbSet(`orders/${id}/status`, status)
-    if (updatedProds) await saveProds(updatedProds)
+    try {
+      const existing = await dbGet(`orders/${id}`)
+      if (!existing) throw new Error('Order not found')
+      await dbSet(`orders/${id}`, { ...existing, status })
+      if (updatedProds) await saveProds(updatedProds)
+    } catch (e) {
+      console.error('Failed to update order status:', e)
+      alert('Failed to update order: ' + e.message)
+    }
   }
 
-  /* FIXED: now uses dbDeleteOrder with proper Firebase remove() */
   const deleteOrder = async (id) => {
     try {
       await dbDeleteOrder(id)
