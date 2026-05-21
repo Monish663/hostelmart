@@ -20,7 +20,7 @@ export default function OwnerLogin({ onSuccess, onBack }) {
     setError('')
     try {
       await ownerLogin(email.trim(), password)
-      onSuccess()
+      
     } catch (e) {
       setError('Invalid email or password. Please try again.')
       setShake(true)

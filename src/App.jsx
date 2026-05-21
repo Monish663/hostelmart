@@ -84,7 +84,7 @@ export default function App() {
       if (user) {
         log(`auth: user=${user.uid} email=${user.email || 'anon'} mode=${modeRef.current}`)
         startListeners()
-        if (user.email && modeRef.current === 'ownerLogin') {
+        if (user.email) {
           log('→ setMode owner')
           setModeSync('owner')
         }
