@@ -100,7 +100,7 @@ export default function OwnerOrders({ orders, updateOrderStatus, deleteOrder, pr
                   {(o.items||[]).map((it, i) => (
                     <div key={i} style={{ display:'flex', justifyContent:'space-between',
                       fontSize:'14px', padding:'5px 0',
-                      borderBottom: i < o.items.length-1 ? '1px solid #E5E7EB' : 'none' }}>
+                      borderBottom: i < (o.items||[]).length-1 ? '1px solid #E5E7EB' : 'none'
                       <span>{it.emoji || '📦'} {it.name} × {it.qty} {it.unit}</span>
                       <span style={{ fontWeight:'700', color:P.dark }}>₹{it.price * it.qty}</span>
                     </div>

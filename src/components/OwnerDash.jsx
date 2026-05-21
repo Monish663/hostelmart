@@ -92,7 +92,7 @@ export default function OwnerDash({ products, orders }) {
                       <span style={{ color:P.blue, fontSize:'13px', marginLeft:'8px', fontWeight:'700' }}>· 📱 +91 {o.phone}</span>
                     )}
                     <div style={{ color:P.gray, fontSize:'12px', marginTop:'2px' }}>
-                      {o.items.length} items · {new Date(o.timestamp).toLocaleTimeString()}
+                      {(o.items||[]).length} items · {new Date(o.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>

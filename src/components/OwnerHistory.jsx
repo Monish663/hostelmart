@@ -55,7 +55,7 @@ export default function OwnerHistory({ orders }) {
                       <span style={{ color:P.gray, fontSize:'13px', marginLeft:'8px' }}>· {o.customerName}</span>
                     )}
                     <div style={{ color:P.gray, fontSize:'12px', marginTop:'2px' }}>
-                      {new Date(o.timestamp).toLocaleString()} · {o.items.length} items
+                      {new Date(o.timestamp).toLocaleString()} · {(o.items||[]).length} items
                     </div>
                   </div>
                   <div style={{ fontWeight:'900', fontSize:'22px', color:P.green }}>₹{o.total}</div>

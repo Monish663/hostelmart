@@ -59,7 +59,7 @@ export default function App() {
       log(`products listener fired, data=${data ? 'yes' : 'null'}`)
       if (data) {
         const arr = Array.isArray(data) ? data : Object.values(data)
-        setProducts(arr.filter(Boolean))
+        setOrders(arr.filter(o => o && o.id && Array.isArray(o.items)))
       } else {
         dbSet('products', INIT_PRODUCTS)
         setProducts(INIT_PRODUCTS)
@@ -71,7 +71,7 @@ export default function App() {
       log(`orders listener fired, data=${data ? 'yes' : 'null'}`)
       if (data) {
         const arr = Array.isArray(data) ? data : Object.values(data)
-        setOrders(arr.filter(Boolean))
+        setOrders(arr.filter(o => o && o.id && Array.isArray(o.items)))
       } else {
         setOrders([])
       }
