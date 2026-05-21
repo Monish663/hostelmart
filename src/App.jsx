@@ -1,9 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Component } from 'react'
 import { dbSet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
 import CustomerPanel from './components/CustomerPanel.jsx'
+
+export class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) return (
+      <div style={{ padding:'40px', textAlign:'center', fontFamily:'sans-serif' }}>
+        <div style={{ fontSize:'48px', marginBottom:'16px' }}>⚠️</div>
+        <h2 style={{ color:'#E8503A', marginBottom:'12px' }}>Something went wrong</h2>
+        <p style={{ color:'#6B7280', marginBottom:'20px' }}>{this.state.error.message}</p>
+        <button onClick={() => window.location.reload()}
+          style={{ background:'#E8503A', color:'white', border:'none', borderRadius:'10px',
+            padding:'12px 24px', cursor:'pointer', fontSize:'16px', fontWeight:'700' }}>
+          🔄 Reload App
+        </button>
+      </div>
+    )
+    return this.props.children
+  }
+}
 
 export default function App() {
   const [mode, setMode]         = useState('home')

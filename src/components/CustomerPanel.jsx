@@ -61,6 +61,7 @@ export default function CustomerPanel({ products, orders, onBack }) {
       id: uid(),
       roomNumber: selfPickup ? 'SELF PICKUP' : room.trim(),
       customerName: name.trim(),
+      phone: custPhone.replace(/\D/g,''),
       note: note.trim(),
       selfPickup,
       deliveryCharge: DELIVERY_CHARGE,
