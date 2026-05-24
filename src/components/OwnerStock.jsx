@@ -79,7 +79,13 @@ export default function OwnerStock({ products, saveProds }) {
         <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
           <input placeholder="🔍 Search…" value={search}
             onChange={e => setSearch(e.target.value)} style={{ ...inp(), width:'200px' }} />
-          <button onClick={() => setShowAdd(!showAdd)} style={btn(P.teal)}>＋ Add Product</button>
+          <button onClick={() => {
+            setShowAdd(!showAdd)
+            setUploading(false)
+            setImageFile(null)
+            setImagePreview(null)
+            setForm({ name:'', cat:'Beverages', price:'', stock:'', unit:'piece', emoji:'🛒' })
+          }} style={btn(P.teal)}>＋ Add Product</button>
         </div>
       </div>
 
