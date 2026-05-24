@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { P } from '../constants.js'
 import { dbSet } from '../firebase.js'
 import { card } from '../styles.js'
@@ -13,6 +13,9 @@ export default function OwnerDash({ products, orders, storeStatus = { open: true
   const outStock  = products.filter(p => p.stock === 0)
 
   const [localNote, setLocalNote] = useState(storeStatus.note || '')
+  useEffect(() => {
+    setLocalNote(storeStatus.note || '')
+  }, [storeStatus.note])
 
   const toggleStore = () => {
     dbSet('storeStatus', { open: !storeStatus.open, note: localNote })

@@ -60,16 +60,17 @@ export default function App() {
     })
 
     unsubOrds.current = dbListen('orders', (data) => {
-      dbListen('storeStatus', (data) => {
-        if (data) setStoreStatus(data)
-        else setStoreStatus({ open: true, note: '' })
-      })
+      
       if (data) {
         const arr = Array.isArray(data) ? data : Object.values(data)
         setOrders(arr.filter(o => o && o.id && Array.isArray(o.items)))
       } else {
         setOrders([])
       }
+    })
+    dbListen('storeStatus', (data) => {
+      if (data) setStoreStatus(data)
+      else setStoreStatus({ open: true, note: '' })
     })
   }
 
