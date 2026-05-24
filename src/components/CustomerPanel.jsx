@@ -17,6 +17,8 @@ export default function CustomerPanel({ products, orders, onBack, storeStatus = 
   const [selfPickup, setSelfPickup] = useState(false)
   const [success, setSuccess]   = useState(false)
 
+  const isOpen     = storeStatus?.open !== false && storeStatus?.open !== 0
+  const storeNote  = (!storeStatus?.note || storeStatus?.note === '__empty__') ? '' : storeStatus?.note
   const inStock  = products.filter(p => p.stock > 0)
   const cats     = ['All', ...Object.keys(CAT)]
   const shown    = inStock.filter(p =>
@@ -44,6 +46,7 @@ export default function CustomerPanel({ products, orders, onBack, storeStatus = 
       : c).filter(c => c.qty > 0))
 
   const placeOrder = async () => {
+    if (!isOpen) return alert('🔴 Store is currently closed. Please try again later.')
     if (!selfPickup && !room.trim()) return alert('Please enter your room number')
     if (!name.trim()) return alert('Please enter your name')
     if (custPhone.replace(/\D/g,'').length !== 10) return alert('Please enter a valid 10-digit mobile number')
@@ -154,6 +157,37 @@ export default function CustomerPanel({ products, orders, onBack, storeStatus = 
         {/* ── SHOP TAB ── */}
         {tab === 'shop' && (
           <div>
+            {/* Store Closed Banner */}
+            {!isOpen && (
+              <div style={{ background:'#FFF1F0', border:`2px solid ${P.coral}`,
+                borderRadius:'16px', padding:'20px 24px', marginBottom:'20px', textAlign:'center' }}>
+                <div style={{ fontSize:'40px', marginBottom:'8px' }}>🔴</div>
+                <div style={{ fontWeight:'900', fontSize:'20px', color:P.coral, marginBottom:'6px' }}>
+                  Store is Currently Closed
+                </div>
+                <div style={{ color:P.gray, fontSize:'14px', marginBottom: storeNote ? '12px' : '0' }}>
+                  You can browse items but ordering is disabled right now.
+                </div>
+                {storeNote && (
+                  <div style={{ background:'white', borderRadius:'10px', padding:'12px 16px',
+                    color:P.dark, fontSize:'14px', fontWeight:'600',
+                    border:`1.5px solid ${P.coral}44`, lineHeight:1.6 }}>
+                    📢 {storeNote}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Store Notice when open */}
+            {isOpen && storeNote && (
+              <div style={{ background:'#EFF6FF', border:`1.5px solid ${P.blue}`,
+                borderRadius:'14px', padding:'14px 18px', marginBottom:'16px',
+                display:'flex', gap:'10px', alignItems:'flex-start' }}>
+                <span style={{ fontSize:'20px' }}>📢</span>
+                <div style={{ color:P.blue, fontSize:'14px', fontWeight:'600', lineHeight:1.6 }}>
+                  {storeNote}
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom:'16px' }}>
               <input placeholder="🔍 Search groceries…" value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -211,9 +245,14 @@ export default function CustomerPanel({ products, orders, onBack, storeStatus = 
                             </span>
                           </div>
                           {!inCart
-                            ? <button onClick={() => addToCart(p)} style={{
-                                ...btn(meta.color), width:'100%', justifyContent:'center', borderRadius:'10px' }}>
-                                ＋ Add to Cart
+                            ? <button
+                                onClick={() => isOpen ? addToCart(p) : alert('🔴 Store is closed.')}
+                                style={{
+                                  ...btn(isOpen ? meta.color : '#9CA3AF'),
+                                  width:'100%', justifyContent:'center', borderRadius:'10px',
+                                  cursor: isOpen ? 'pointer' : 'not-allowed'
+                                }}>
+                                {isOpen ? '＋ Add to Cart' : '🔴 Store Closed'}
                               </button>
                             : <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                                 <button onClick={() => adjCart(p.id,-1,p.stock)} style={{
