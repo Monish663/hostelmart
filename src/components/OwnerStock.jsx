@@ -28,7 +28,12 @@ export default function OwnerStock({ products, saveProds }) {
       const newId = uid()
       let imageUrl = null
       if (imageFile) {
-        imageUrl = await uploadProductImage(imageFile, newId)
+        // 15 second timeout for upload
+        const uploadPromise = uploadProductImage(imageFile, newId)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Upload timed out. Check your internet and try again.')), 15000)
+        )
+        imageUrl = await Promise.race([uploadPromise, timeoutPromise])
       }
       saveProds([...products, {
         id: newId, name:form.name, cat:form.cat,
@@ -41,7 +46,7 @@ export default function OwnerStock({ products, saveProds }) {
       setImagePreview(null)
       setShowAdd(false)
     } catch(e) {
-      alert('Failed to upload image: ' + e.message)
+      alert('❌ ' + e.message)
     } finally {
       setUploading(false)
     }
@@ -153,7 +158,13 @@ export default function OwnerStock({ products, saveProds }) {
             <button onClick={addProduct} disabled={uploading} style={{ ...btn(P.teal), opacity: uploading?0.7:1 }}>
               {uploading ? '⏳ Uploading…' : '✅ Add to Inventory'}
             </button>
-            <button onClick={() => setShowAdd(false)} style={btn('#E5E7EB', P.gray)}>Cancel</button>
+            <button onClick={() => {
+              setShowAdd(false)
+              setUploading(false)
+              setImageFile(null)
+              setImagePreview(null)
+              setForm({ name:'', cat:'Beverages', price:'', stock:'', unit:'piece', emoji:'🛒' })
+            }} style={btn('#E5E7EB', P.gray)}>Cancel</button>
           </div>
         </div>
       )}
