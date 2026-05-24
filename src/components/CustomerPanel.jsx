@@ -122,29 +122,6 @@ export default function CustomerPanel({ products, orders, onBack, storeStatus = 
 
       <div style={{ padding:'24px', maxWidth:'960px', margin:'0 auto' }}>
         
-        {/* Store Closed Banner */}
-        {!storeStatus.open && (
-          <div style={{ background:'#FEE2E2', border:'2px solid #E8503A', borderRadius:'14px',
-            padding:'20px 22px', marginBottom:'20px', textAlign:'center' }}>
-            <div style={{ fontSize:'32px', marginBottom:'8px' }}>🔴</div>
-            <div style={{ fontWeight:'900', fontSize:'18px', color:'#DC2626' }}>Store is Currently Closed</div>
-            {storeStatus.note && (
-              <div style={{ color:'#6B7280', fontSize:'14px', marginTop:'8px', lineHeight:'1.6' }}>
-                {storeStatus.note}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Store Notice (when open) */}
-        {storeStatus.open && storeStatus.note && (
-          <div style={{ background:'#ECFDF5', border:`2px solid #1E8A48`, borderRadius:'14px',
-            padding:'14px 18px', marginBottom:'20px' }}>
-            <div style={{ fontWeight:'700', color:'#1E8A48', fontSize:'13px', marginBottom:'4px' }}>📋 Store Notice</div>
-            <div style={{ color:'#374151', fontSize:'14px', lineHeight:'1.6' }}>{storeStatus.note}</div>
-          </div>
-        )}
-
         {/* Success Banner */}
         {success && (
           <div style={{ background:'#D1FAE5', border:`2px solid ${P.green}`, borderRadius:'14px',
