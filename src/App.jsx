@@ -33,6 +33,7 @@ export default function App() {
   const [products, setProducts] = useState([])
   const [orders, setOrders]     = useState([])
   const [ready, setReady]       = useState(false)
+  const [storeStatus, setStoreStatus] = useState({ open: true, note: '' })
 
   const modeRef    = useRef('home')
   const unsubProds = useRef(() => {})
@@ -59,6 +60,10 @@ export default function App() {
     })
 
     unsubOrds.current = dbListen('orders', (data) => {
+      dbListen('storeStatus', (data) => {
+        if (data) setStoreStatus(data)
+        else setStoreStatus({ open: true, note: '' })
+      })
       if (data) {
         const arr = Array.isArray(data) ? data : Object.values(data)
         setOrders(arr.filter(o => o && o.id && Array.isArray(o.items)))
@@ -138,6 +143,7 @@ export default function App() {
 
   if (mode === 'owner') return (
     <OwnerPanel
+      storeStatus={storeStatus}
       products={products} orders={orders}
       saveProds={saveProds} updateOrderStatus={updateOrderStatus}
       deleteOrder={deleteOrder} onLogout={handleOwnerLogout}
@@ -145,7 +151,9 @@ export default function App() {
   )
 
   if (mode === 'customer') return (
-    <CustomerPanel products={products} orders={orders} onBack={() => setModeSync('home')} />
+    <CustomerPanel 
+    storeStatus={storeStatus}
+    products={products} orders={orders} onBack={() => setModeSync('home')} />
   )
 
   return (

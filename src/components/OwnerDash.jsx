@@ -1,14 +1,25 @@
-﻿import { P } from '../constants.js'
+﻿import { useState } from 'react'
+import { P } from '../constants.js'
+import { dbSet } from '../firebase.js'
 import { card } from '../styles.js'
 import Badge from './Badge.jsx'
 
-export default function OwnerDash({ products, orders }) {
+export default function OwnerDash({ products, orders, storeStatus = { open: true, note: '' } }) {
   const pending   = orders.filter(o => o.status === 'pending')
   const confirmed = orders.filter(o => o.status === 'confirmed')
   const delivered = orders.filter(o => o.status === 'delivered')
   const revenue   = delivered.reduce((s, o) => s + o.total, 0)
   const lowStock  = products.filter(p => p.stock > 0 && p.stock <= 5)
   const outStock  = products.filter(p => p.stock === 0)
+
+  const [localNote, setLocalNote] = useState(storeStatus.note || '')
+
+  const toggleStore = () => {
+    dbSet('storeStatus', { open: !storeStatus.open, note: localNote })
+  }
+  const saveNote = () => {
+    dbSet('storeStatus', { open: storeStatus.open, note: localNote })
+  }
 
   const STATS = [
     { label:'Total Products',    val: products.length,  color: P.blue,   emoji:'📦' },
@@ -19,6 +30,52 @@ export default function OwnerDash({ products, orders }) {
 
   return (
     <div>
+      {/* ── Store Open/Close Control ── */}
+      <div style={{
+        background: storeStatus.open ? '#F0FDF4' : '#FFF1F0',
+        border: `2px solid ${storeStatus.open ? P.green : P.coral}`,
+        borderRadius: '18px', padding: '20px', marginBottom: '24px'
+      }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'12px' }}>
+          <div>
+            <div style={{ fontWeight:'900', fontSize:'20px', color: storeStatus.open ? P.green : P.coral }}>
+              {storeStatus.open ? '🟢 Store is OPEN' : '🔴 Store is CLOSED'}
+            </div>
+            <div style={{ color: P.gray, fontSize:'13px', marginTop:'4px' }}>
+              Customers {storeStatus.open ? 'can' : 'cannot'} place orders right now
+            </div>
+          </div>
+          <button onClick={toggleStore} style={{
+            background: storeStatus.open ? P.coral : P.green,
+            color: 'white', border: 'none', borderRadius: '14px',
+            padding: '14px 28px', cursor: 'pointer', fontWeight: '800',
+            fontSize: '15px', fontFamily: 'inherit'
+          }}>
+            {storeStatus.open ? '🔴 Close Store' : '🟢 Open Store'}
+          </button>
+        </div>
+        <div style={{ marginTop:'16px' }}>
+          <label style={{ fontSize:'13px', fontWeight:'700', color: P.gray, display:'block', marginBottom:'8px' }}>
+            📋 Customer Notice
+          </label>
+          <textarea
+            value={localNote}
+            onChange={e => setLocalNote(e.target.value)}
+            onBlur={saveNote}
+            placeholder="e.g. Store opens at 8 AM and closes at 10 PM. Closed on Sundays."
+            rows={3}
+            style={{
+              border: `2px solid #E5E7EB`, borderRadius: '12px',
+              padding: '11px 14px', fontSize: '14px', fontFamily: 'inherit',
+              outline: 'none', width: '100%', boxSizing: 'border-box',
+              background: '#fff', resize: 'vertical', lineHeight: '1.5'
+            }}
+          />
+          <div style={{ fontSize:'11px', color: P.gray, marginTop:'4px' }}>
+            Click away to save · Shown to all customers
+          </div>
+        </div>
+      </div>
       <h2 style={{ color:P.dark, margin:'0 0 20px', fontFamily:'Georgia,serif', fontSize:'26px' }}>
         Good Day, Owner! 👋
       </h2>
