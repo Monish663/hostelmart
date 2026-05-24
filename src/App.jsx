@@ -60,7 +60,6 @@ export default function App() {
     })
 
     unsubOrds.current = dbListen('orders', (data) => {
-      
       if (data) {
         const arr = Array.isArray(data) ? data : Object.values(data)
         setOrders(arr.filter(o => o && o.id && Array.isArray(o.items)))
