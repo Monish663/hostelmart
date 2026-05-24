@@ -18,11 +18,10 @@ export default function OwnerDash({ products, orders, storeStatus = { open: true
   }, [storeStatus.note])
 
   const toggleStore = () => {
-    const newOpen = !storeStatus.open
-    dbSet('storeStatus', { open: newOpen, note: storeStatus.note })
+    dbSet('storeStatus', { open: !storeStatus.open, note: localNote || '' })
   }
   const saveNote = () => {
-    dbSet('storeStatus', { open: storeStatus.open, note: localNote })
+    dbSet('storeStatus', { open: storeStatus.open === true, note: localNote || '' })
   }
 
   const STATS = [

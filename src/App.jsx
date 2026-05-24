@@ -38,6 +38,7 @@ export default function App() {
   const modeRef    = useRef('home')
   const unsubProds = useRef(() => {})
   const unsubOrds  = useRef(() => {})
+  const unsubStore = useRef(() => {})
 
   const setModeSync = (m) => {
     modeRef.current = m
@@ -67,8 +68,9 @@ export default function App() {
         setOrders([])
       }
     })
-    dbListen('storeStatus', (data) => {
-      if (data) setStoreStatus(data)
+    unsubStore.current()
+    unsubStore.current = dbListen('storeStatus', (data) => {
+      if (data) setStoreStatus({ open: data.open === true, note: data.note || '' })
       else setStoreStatus({ open: true, note: '' })
     })
   }
@@ -96,6 +98,7 @@ export default function App() {
       unsubAuth()
       unsubProds.current()
       unsubOrds.current()
+      unsubStore.current()
     }
   }, [])
 
