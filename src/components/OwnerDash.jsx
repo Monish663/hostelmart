@@ -1,9 +1,8 @@
-﻿import { useState, useEffect } from 'react'
-import { P } from '../constants.js'
-import { card, btn, inp } from '../styles.js'
+﻿import { P } from '../constants.js'
+import { card } from '../styles.js'
 import Badge from './Badge.jsx'
 
-export default function OwnerDash({ products, orders, storeSettings, saveStoreSettings }) {
+export default function OwnerDash({ products, orders }) {
   const pending   = orders.filter(o => o.status === 'pending')
   const confirmed = orders.filter(o => o.status === 'confirmed')
   const delivered = orders.filter(o => o.status === 'delivered')
@@ -11,38 +10,11 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
   const lowStock  = products.filter(p => p.stock > 0 && p.stock <= 5)
   const outStock  = products.filter(p => p.stock === 0)
 
-  const isOpen = storeSettings?.isOpen !== false
-  const [noticeInput, setNoticeInput] = useState('')
-  const [noticeSaved, setNoticeSaved] = useState(false)
-
-  useEffect(() => {
-    if (storeSettings?.notice !== undefined) {
-      setNoticeInput(storeSettings.notice)
-    }
-  }, [storeSettings?.notice])
-
-  const toggleStore = () => {
-    if (!saveStoreSettings) return
-    saveStoreSettings({ ...(storeSettings || {}), isOpen: !isOpen })
-  }
-
-  const saveNotice = () => {
-    if (!saveStoreSettings) return
-    saveStoreSettings({ ...(storeSettings || {}), notice: noticeInput.trim() })
-    setNoticeSaved(true)
-    setTimeout(() => setNoticeSaved(false), 2000)
-  }
-
-  const clearNotice = () => {
-    setNoticeInput('')
-    if (saveStoreSettings) saveStoreSettings({ ...(storeSettings || {}), notice: '' })
-  }
-
   const STATS = [
-    { label:'Total Products',  val: products.length, color: P.blue,  emoji:'📦' },
-    { label:'Pending Orders',  val: pending.length,  color: P.coral, emoji:'🔔' },
-    { label:'Total Revenue',   val: `₹${revenue}`,  color: P.green, emoji:'💰' },
-    { label:'Low Stock Items', val: lowStock.length, color: P.amber, emoji:'⚠️' },
+    { label:'Total Products',    val: products.length,  color: P.blue,   emoji:'📦' },
+    { label:'Pending Orders',    val: pending.length,   color: P.coral,  emoji:'🔔' },
+    { label:'Total Revenue',     val: `₹${revenue}`,   color: P.green,  emoji:'💰' },
+    { label:'Low Stock Items',   val: lowStock.length,  color: P.amber,  emoji:'⚠️' },
   ]
 
   return (
@@ -51,72 +23,9 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
         Good Day, Owner! 👋
       </h2>
 
-      <div style={{
-        background: isOpen ? '#F0FDF4' : '#FFF1F0',
-        border: `2px solid ${isOpen ? P.green : P.coral}`,
-        borderRadius: '18px', padding: '20px',
-        boxShadow: '0 3px 14px rgba(0,0,0,0.07)', marginBottom: '24px',
-      }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'16px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-            <span style={{ fontSize:'36px' }}>{isOpen ? '🟢' : '🔴'}</span>
-            <div>
-              <div style={{ fontWeight:'900', fontSize:'22px', color: isOpen ? P.green : P.coral }}>
-                Store is {isOpen ? 'OPEN' : 'CLOSED'}
-              </div>
-              <div style={{ color: P.gray, fontSize:'13px', marginTop:'3px' }}>
-                {isOpen ? 'Customers can browse and place orders' : 'Customers cannot place orders right now'}
-              </div>
-            </div>
-          </div>
-          <button onClick={toggleStore} style={{
-            background: isOpen ? P.coral : P.green, color: 'white', border: 'none',
-            borderRadius: '14px', padding: '14px 28px', fontSize: '16px',
-            fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-            {isOpen ? '🔴 Close Store' : '🟢 Open Store'}
-          </button>
-        </div>
-
-        <div style={{ marginTop:'20px', borderTop:`1.5px solid ${isOpen ? '#BBF7D0' : '#FECACA'}`, paddingTop:'18px' }}>
-          <label style={{ fontWeight:'800', fontSize:'13px', color:P.gray, display:'block', marginBottom:'8px' }}>
-            📢 Notice / Announcement for Customers
-          </label>
-          <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
-            <textarea
-              placeholder="e.g. Shop opens daily 8AM-10PM. Closed on Sundays."
-              value={noticeInput}
-              onChange={e => { setNoticeInput(e.target.value); setNoticeSaved(false) }}
-              rows={3}
-              style={{ flex:1, minWidth:'200px', border:`2px solid ${isOpen ? P.green : P.coral}`,
-                borderRadius:'12px', padding:'12px 14px', fontSize:'14px',
-                fontFamily:'inherit', outline:'none', resize:'vertical', background:'white', lineHeight:1.6 }}
-            />
-            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-              <button onClick={saveNotice} style={{
-                background: isOpen ? P.green : P.coral, color:'white', border:'none',
-                borderRadius:'12px', padding:'12px 20px', fontWeight:'700',
-                cursor:'pointer', fontSize:'14px', fontFamily:'inherit',
-              }}>
-                {noticeSaved ? '✅ Saved!' : '💾 Save'}
-              </button>
-              {noticeInput && (
-                <button onClick={clearNotice} style={{
-                  background:'#EEE', color:P.gray, border:'none', borderRadius:'10px',
-                  padding:'6px 14px', fontWeight:'700', cursor:'pointer', fontSize:'13px', fontFamily:'inherit',
-                }}>
-                  🗑️ Clear
-                </button>
-              )}
-            </div>
-          </div>
-          <p style={{ color:P.gray, fontSize:'12px', margin:'8px 0 0' }}>
-            This message will be shown to all customers at the top of the shop.
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'16px', marginBottom:'24px' }}>
+      {/* Stat Cards */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',
+        gap:'16px', marginBottom:'24px' }}>
         {STATS.map(s => (
           <div key={s.label} style={{ background:s.color, borderRadius:'18px', padding:'22px', color:'white' }}>
             <div style={{ fontSize:'32px', marginBottom:'8px' }}>{s.emoji}</div>
@@ -126,9 +35,9 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
         ))}
       </div>
 
+      {/* Out of Stock Alert */}
       {outStock.length > 0 && (
-        <div style={{ background:'#fff', borderRadius:'18px', padding:'20px',
-          boxShadow:'0 3px 14px rgba(0,0,0,0.07)', border:`2px solid ${P.coral}`, marginBottom:'16px' }}>
+        <div style={{ ...card({ border:`2px solid ${P.coral}`, marginBottom:'16px' }) }}>
           <div style={{ fontWeight:'800', color:P.coral, marginBottom:'12px', fontSize:'16px' }}>
             🚫 Out of Stock — Restock Needed!
           </div>
@@ -143,7 +52,9 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
         </div>
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'16px', marginBottom:'24px' }}>
+      {/* Order Status Summary */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',
+        gap:'16px', marginBottom:'24px' }}>
         {[
           { label:'Pending',   count:pending.length,   color:'#FEF3C7', fg:'#92400E', icon:'⏳' },
           { label:'Confirmed', count:confirmed.length, color:'#DBEAFE', fg:'#1E40AF', icon:'✅' },
@@ -160,7 +71,8 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
         ))}
       </div>
 
-      <div style={{ background:'#fff', borderRadius:'18px', padding:'20px', boxShadow:'0 3px 14px rgba(0,0,0,0.07)' }}>
+      {/* Recent Orders */}
+      <div style={card()}>
         <h3 style={{ color:P.dark, margin:'0 0 16px', fontSize:'18px' }}>🕐 Recent Orders</h3>
         {orders.length === 0
           ? <p style={{ color:P.gray, textAlign:'center', padding:'20px' }}>No orders yet.</p>
