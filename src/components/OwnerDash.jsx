@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { P } from '../constants.js'
 import { card, btn, inp } from '../styles.js'
 import Badge from './Badge.jsx'
@@ -11,19 +11,33 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
   const lowStock  = products.filter(p => p.stock > 0 && p.stock <= 5)
   const outStock  = products.filter(p => p.stock === 0)
 
+  // Safe defaults so the button always renders even if storeSettings hasn't loaded yet
   const isOpen = storeSettings?.isOpen !== false
-  const notice = storeSettings?.notice || ''
   const [noticeInput, setNoticeInput] = useState('')
   const [noticeSaved, setNoticeSaved] = useState(false)
 
+  // Sync noticeInput when Firebase data arrives
+  useEffect(() => {
+    if (storeSettings?.notice !== undefined) {
+      setNoticeInput(storeSettings.notice)
+    }
+  }, [storeSettings?.notice])
+
   const toggleStore = () => {
-    saveStoreSettings({ ...storeSettings, isOpen: !isOpen })
+    if (!saveStoreSettings) return
+    saveStoreSettings({ ...(storeSettings || {}), isOpen: !isOpen })
   }
 
   const saveNotice = () => {
-    saveStoreSettings({ ...storeSettings, notice: noticeInput.trim() })
+    if (!saveStoreSettings) return
+    saveStoreSettings({ ...(storeSettings || {}), notice: noticeInput.trim() })
     setNoticeSaved(true)
     setTimeout(() => setNoticeSaved(false), 2000)
+  }
+
+  const clearNotice = () => {
+    setNoticeInput('')
+    if (saveStoreSettings) saveStoreSettings({ ...(storeSettings || {}), notice: '' })
   }
 
   const STATS = [
@@ -40,41 +54,54 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
       </h2>
 
       {/* ── Store Open / Close Control ── */}
-      <div style={{ ...card({
-        border: `2px solid ${isOpen ? P.green : P.coral}`,
-        marginBottom: '24px',
+      <div style={{
         background: isOpen ? '#F0FDF4' : '#FFF1F0',
-      }) }}>
+        border: `2px solid ${isOpen ? P.green : P.coral}`,
+        borderRadius: '18px',
+        padding: '20px',
+        boxShadow: '0 3px 14px rgba(0,0,0,0.07)',
+        marginBottom: '24px',
+      }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
           flexWrap:'wrap', gap:'16px' }}>
-          <div>
-            <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-              <span style={{ fontSize:'36px' }}>{isOpen ? '🟢' : '🔴'}</span>
-              <div>
-                <div style={{ fontWeight:'900', fontSize:'22px',
-                  color: isOpen ? P.green : P.coral }}>
-                  Store is {isOpen ? 'OPEN' : 'CLOSED'}
-                </div>
-                <div style={{ color: P.gray, fontSize:'13px', marginTop:'3px' }}>
-                  {isOpen
-                    ? 'Customers can browse and place orders'
-                    : 'Customers cannot place orders right now'}
-                </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+            <span style={{ fontSize:'36px' }}>{isOpen ? '🟢' : '🔴'}</span>
+            <div>
+              <div style={{ fontWeight:'900', fontSize:'22px', color: isOpen ? P.green : P.coral }}>
+                Store is {isOpen ? 'OPEN' : 'CLOSED'}
+              </div>
+              <div style={{ color: P.gray, fontSize:'13px', marginTop:'3px' }}>
+                {isOpen
+                  ? 'Customers can browse and place orders'
+                  : 'Customers cannot place orders right now'}
               </div>
             </div>
           </div>
-          <button onClick={toggleStore} style={{
-            ...btn(isOpen ? P.coral : P.green),
-            padding: '14px 28px', fontSize: '16px', borderRadius: '14px',
-            boxShadow: `0 6px 20px ${isOpen ? P.coral : P.green}44`,
-          }}>
+          <button
+            onClick={toggleStore}
+            style={{
+              background: isOpen ? P.coral : P.green,
+              color: 'white',
+              border: 'none',
+              borderRadius: '14px',
+              padding: '14px 28px',
+              fontSize: '16px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: `0 6px 20px ${isOpen ? P.coral : P.green}44`,
+            }}
+          >
             {isOpen ? '🔴 Close Store' : '🟢 Open Store'}
           </button>
         </div>
 
-        {/* Notice / Announcement Box */}
-        <div style={{ marginTop: '20px', borderTop: `1.5px solid ${isOpen ? '#BBF7D0' : '#FECACA'}`,
-          paddingTop: '18px' }}>
+        {/* Notice Box */}
+        <div style={{
+          marginTop: '20px',
+          borderTop: `1.5px solid ${isOpen ? '#BBF7D0' : '#FECACA'}`,
+          paddingTop: '18px',
+        }}>
           <label style={{ fontWeight:'800', fontSize:'13px', color: P.gray,
             display:'block', marginBottom:'8px' }}>
             📢 Notice / Announcement for Customers
@@ -85,21 +112,30 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
               value={noticeInput}
               onChange={e => { setNoticeInput(e.target.value); setNoticeSaved(false) }}
               rows={3}
-              style={{ flex:1, minWidth:'200px', border:`2px solid ${isOpen ? P.green : P.coral}`,
-                borderRadius:'12px', padding:'12px 14px', fontSize:'14px',
-                fontFamily:'inherit', outline:'none', resize:'vertical',
-                background:'white', lineHeight:1.6 }}
+              style={{
+                flex: 1, minWidth: '200px',
+                border: `2px solid ${isOpen ? P.green : P.coral}`,
+                borderRadius: '12px', padding: '12px 14px',
+                fontSize: '14px', fontFamily: 'inherit',
+                outline: 'none', resize: 'vertical',
+                background: 'white', lineHeight: 1.6,
+              }}
             />
             <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
               <button onClick={saveNotice} style={{
-                ...btn(isOpen ? P.green : P.coral),
-                borderRadius:'12px', padding:'12px 20px',
+                background: isOpen ? P.green : P.coral,
+                color: 'white', border: 'none', borderRadius: '12px',
+                padding: '12px 20px', fontWeight: '700', cursor: 'pointer',
+                fontSize: '14px', fontFamily: 'inherit',
               }}>
                 {noticeSaved ? '✅ Saved!' : '💾 Save'}
               </button>
               {noticeInput && (
-                <button onClick={() => { setNoticeInput(''); saveStoreSettings({ ...storeSettings, notice: '' }) }}
-                  style={{ ...btn('#EEE', P.gray, true), borderRadius:'10px', justifyContent:'center' }}>
+                <button onClick={clearNotice} style={{
+                  background: '#EEE', color: P.gray, border: 'none',
+                  borderRadius: '10px', padding: '6px 14px',
+                  fontWeight: '700', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit',
+                }}>
                   🗑️ Clear
                 </button>
               )}
@@ -125,7 +161,9 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
 
       {/* Out of Stock Alert */}
       {outStock.length > 0 && (
-        <div style={{ ...card({ border:`2px solid ${P.coral}`, marginBottom:'16px' }) }}>
+        <div style={{ background:'#fff', borderRadius:'18px', padding:'20px',
+          boxShadow:'0 3px 14px rgba(0,0,0,0.07)',
+          border:`2px solid ${P.coral}`, marginBottom:'16px' }}>
           <div style={{ fontWeight:'800', color:P.coral, marginBottom:'12px', fontSize:'16px' }}>
             🚫 Out of Stock — Restock Needed!
           </div>
@@ -160,7 +198,8 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
       </div>
 
       {/* Recent Orders */}
-      <div style={card()}>
+      <div style={{ background:'#fff', borderRadius:'18px', padding:'20px',
+        boxShadow:'0 3px 14px rgba(0,0,0,0.07)' }}>
         <h3 style={{ color:P.dark, margin:'0 0 16px', fontSize:'18px' }}>🕐 Recent Orders</h3>
         {orders.length === 0
           ? <p style={{ color:P.gray, textAlign:'center', padding:'20px' }}>No orders yet.</p>
@@ -177,7 +216,9 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
                       <span style={{ color:P.gray, fontSize:'13px', marginLeft:'8px' }}>· {o.customerName}</span>
                     )}
                     {o.phone && (
-                      <span style={{ color:P.blue, fontSize:'13px', marginLeft:'8px', fontWeight:'700' }}>· 📱 +91 {o.phone}</span>
+                      <span style={{ color:P.blue, fontSize:'13px', marginLeft:'8px', fontWeight:'700' }}>
+                        · 📱 +91 {o.phone}
+                      </span>
                     )}
                     <div style={{ color:P.gray, fontSize:'12px', marginTop:'2px' }}>
                       {(o.items||[]).length} items · {new Date(o.timestamp).toLocaleTimeString()}
