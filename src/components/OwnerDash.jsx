@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { P } from '../constants.js'
-import { dbSet } from '../firebase.js'
+import { dbSetStoreStatus } from '../firebase.js'
 import { card } from '../styles.js'
 import Badge from './Badge.jsx'
 
@@ -18,10 +18,10 @@ export default function OwnerDash({ products, orders, storeStatus = { open: true
   }, [storeStatus.note])
 
   const toggleStore = () => {
-    dbSet('storeStatus', { open: !storeStatus.open, note: localNote || '' })
+    dbSetStoreStatus({ open: !storeStatus.open, note: localNote })
   }
   const saveNote = () => {
-    dbSet('storeStatus', { open: storeStatus.open === true, note: localNote || '' })
+    dbSetStoreStatus({ open: storeStatus.open, note: localNote })
   }
 
   const STATS = [

@@ -37,6 +37,12 @@ export const dbListen = (path, callback) => {
     callback(snapshot.exists() ? snapshot.val() : null)
   })
 }
+export const dbSetStoreStatus = async ({ open, note }) => {
+  await set(ref(database, 'storeStatus'), {
+    open: open ? 1 : 0,
+    note: note && note.trim() ? note.trim() : '__empty__'
+  })
+}
 
 export const dbAppendOrder = async (order) => {
   await set(ref(database, `orders/${order.id}`), order)

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Component } from 'react'
-import { dbSet, dbGet, dbListen, dbDeleteOrder, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
+import { dbSet, dbGet, dbListen, dbDeleteOrder, dbSetStoreStatus, ownerLogout, onOwnerAuthChange, signInCustomer } from './firebase.js'
 import { P, INIT_PRODUCTS } from './constants.js'
 import OwnerLogin    from './components/OwnerLogin.jsx'
 import OwnerPanel    from './components/OwnerPanel.jsx'
@@ -70,7 +70,10 @@ export default function App() {
     })
     unsubStore.current()
     unsubStore.current = dbListen('storeStatus', (data) => {
-      if (data) setStoreStatus({ open: data.open === true, note: data.note || '' })
+      if (data) setStoreStatus({
+        open: data.open === 1 || data.open === true,
+        note: (!data.note || data.note === '__empty__') ? '' : data.note
+      })
       else setStoreStatus({ open: true, note: '' })
     })
   }
