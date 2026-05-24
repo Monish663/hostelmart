@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getDatabase, ref, set, get, onValue, remove } from 'firebase/database'
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -20,8 +21,10 @@ const firebaseConfig = {
 
 const app      = initializeApp(firebaseConfig)
 const database = getDatabase(app)
+const storage  = getStorage(app)
 export const auth = getAuth(app)
 
+/* ── Database helpers ── */
 export const dbSet = async (path, data) => {
   await set(ref(database, path), data)
 }
@@ -41,14 +44,23 @@ export const dbAppendOrder = async (order) => {
   await set(ref(database, `orders/${order.id}`), order)
 }
 
-/* FIXED: was "wait" (typo) — now correct "await" */
 export const dbDeleteOrder = async (orderId) => {
   await remove(ref(database, `orders/${orderId}`))
 }
 
+/* ── Upload product image to Firebase Storage ── */
+export const uploadProductImage = async (file, productId) => {
+  const ext      = file.name.split('.').pop()
+  const imageRef = storageRef(storage, `products/${productId}.${ext}`)
+  await uploadBytes(imageRef, file)
+  const url = await getDownloadURL(imageRef)
+  return url
+}
+
+/* ── Auth ── */
 export const ownerLogin  = (email, password) => signInWithEmailAndPassword(auth, email, password)
 export const ownerLogout = () => signOut(auth)
 export const onOwnerAuthChange = (callback) => onAuthStateChanged(auth, callback)
 export const signInCustomer = () => signInAnonymously(auth)
 
-export { database }
+export { database, storage }

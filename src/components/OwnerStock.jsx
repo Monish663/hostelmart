@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { P, CAT, uid } from '../constants.js'
+import { uploadProductImage } from '../firebase.js'
 import { btn, card, inp } from '../styles.js'
 
 export default function OwnerStock({ products, saveProds }) {
@@ -8,15 +9,42 @@ export default function OwnerStock({ products, saveProds }) {
   const [search, setSearch]     = useState('')
   const [editStock, setEditStock] = useState({})
   const [form, setForm] = useState({ name:'', cat:'Beverages', price:'', stock:'', unit:'piece', emoji:'🛒' })
+  const [uploading, setUploading] = useState(false)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
 
-  const addProduct = () => {
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) return alert('Image must be under 5MB')
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const addProduct = async () => {
     if (!form.name || !form.price || form.stock === '') return alert('Please fill all required fields')
-    saveProds([...products, {
-      id: uid(), name:form.name, cat:form.cat,
-      price:Number(form.price), stock:Number(form.stock), unit:form.unit, emoji:form.emoji,
-    }])
-    setForm({ name:'', cat:'Beverages', price:'', stock:'', unit:'piece', emoji:'🛒' })
-    setShowAdd(false)
+    setUploading(true)
+    try {
+      const newId = uid()
+      let imageUrl = null
+      if (imageFile) {
+        imageUrl = await uploadProductImage(imageFile, newId)
+      }
+      saveProds([...products, {
+        id: newId, name:form.name, cat:form.cat,
+        price:Number(form.price), stock:Number(form.stock),
+        unit:form.unit, emoji:form.emoji,
+        imageUrl: imageUrl || null,
+      }])
+      setForm({ name:'', cat:'Beverages', price:'', stock:'', unit:'piece', emoji:'🛒' })
+      setImageFile(null)
+      setImagePreview(null)
+      setShowAdd(false)
+    } catch(e) {
+      alert('Failed to upload image: ' + e.message)
+    } finally {
+      setUploading(false)
+    }
   }
 
   const del = (id) => { if (window.confirm('Delete this product?')) saveProds(products.filter(p => p.id !== id)) }
@@ -90,8 +118,41 @@ export default function OwnerStock({ products, saveProds }) {
               </select>
             </div>
           </div>
+          {/* Image Upload */}
+          <div style={{ marginTop:'14px' }}>
+            <label style={{ fontSize:'12px', fontWeight:'700', color:P.gray, display:'block', marginBottom:'6px' }}>
+              📷 Product Photo (optional)
+            </label>
+            <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap' }}>
+              <label style={{ cursor:'pointer', background:P.teal+'18', border:`2px dashed ${P.teal}`,
+                borderRadius:'12px', padding:'10px 18px', fontSize:'13px', fontWeight:'700',
+                color:P.teal, display:'inline-flex', alignItems:'center', gap:'8px' }}>
+                📁 Choose Photo
+                <input type="file" accept="image/*" onChange={handleImageSelect}
+                  style={{ display:'none' }} />
+              </label>
+              {imagePreview && (
+                <div style={{ position:'relative' }}>
+                  <img src={imagePreview} alt="preview"
+                    style={{ width:'64px', height:'64px', objectFit:'cover',
+                      borderRadius:'10px', border:`2px solid ${P.teal}` }} />
+                  <button onClick={() => { setImageFile(null); setImagePreview(null) }}
+                    style={{ position:'absolute', top:'-8px', right:'-8px', background:P.coral,
+                      border:'none', borderRadius:'50%', width:'20px', height:'20px',
+                      cursor:'pointer', color:'white', fontSize:'12px', fontWeight:'900',
+                      display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+                </div>
+              )}
+              {!imagePreview && (
+                <span style={{ color:P.gray, fontSize:'12px' }}>No photo selected — emoji will be used</span>
+              )}
+            </div>
+          </div>
+
           <div style={{ marginTop:'16px', display:'flex', gap:'12px' }}>
-            <button onClick={addProduct} style={btn(P.teal)}>✅ Add to Inventory</button>
+            <button onClick={addProduct} disabled={uploading} style={{ ...btn(P.teal), opacity: uploading?0.7:1 }}>
+              {uploading ? '⏳ Uploading…' : '✅ Add to Inventory'}
+            </button>
             <button onClick={() => setShowAdd(false)} style={btn('#E5E7EB', P.gray)}>Cancel</button>
           </div>
         </div>
@@ -112,7 +173,12 @@ export default function OwnerStock({ products, saveProds }) {
               <div style={{ background:meta.color, padding:'16px 20px',
                 display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                  <span style={{ fontSize:'36px', lineHeight:1 }}>{p.emoji}</span>
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name}
+                        style={{ width:'48px', height:'48px', objectFit:'cover',
+                          borderRadius:'10px', border:'2px solid rgba(255,255,255,0.4)', flexShrink:0 }} />
+                    : <span style={{ fontSize:'36px', lineHeight:1 }}>{p.emoji}</span>
+                  }
                   <div>
                     <div style={{ color:'white', fontWeight:'800', fontSize:'15px' }}>{p.name}</div>
                     <span style={{ background:'rgba(255,255,255,0.25)', color:'white',

@@ -163,8 +163,15 @@ export default function CustomerPanel({ products, orders, onBack }) {
                       <div key={p.id} style={{ background:'#fff', borderRadius:'18px',
                         boxShadow:'0 3px 14px rgba(0,0,0,0.07)', overflow:'hidden' }}>
                         <div style={{ background:`linear-gradient(135deg,${meta.color},${meta.color}BB)`,
-                          padding:'24px 20px', textAlign:'center' }}>
-                          <div style={{ fontSize:'52px', lineHeight:1 }}>{p.emoji}</div>
+                          padding:'24px 20px', textAlign:'center',
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          minHeight:'100px' }}>
+                          {p.imageUrl
+                            ? <img src={p.imageUrl} alt={p.name}
+                                style={{ width:'80px', height:'80px', objectFit:'cover',
+                                  borderRadius:'14px', border:'3px solid rgba(255,255,255,0.5)' }} />
+                            : <div style={{ fontSize:'52px', lineHeight:1 }}>{p.emoji}</div>
+                          }
                         </div>
                         <div style={{ padding:'14px' }}>
                           <div style={{ fontWeight:'800', fontSize:'15px', color:P.dark, marginBottom:'6px' }}>
