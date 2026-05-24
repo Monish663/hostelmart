@@ -33,6 +33,7 @@ export default function App() {
   const [products, setProducts] = useState([])
   const [orders, setOrders]     = useState([])
   const [ready, setReady]       = useState(false)
+  const [storeSettings, setStoreSettings] = useState({ isOpen: true, notice: '' })
 
   const modeRef    = useRef('home')
   const unsubProds = useRef(() => {})
@@ -66,6 +67,11 @@ export default function App() {
         setOrders([])
       }
     })
+
+    dbListen('storeSettings', (data) => {
+      if (data) setStoreSettings(data)
+      else setStoreSettings({ isOpen: true, notice: '' })
+    })
   }
 
   useEffect(() => {
@@ -95,6 +101,7 @@ export default function App() {
   }, [])
 
   const saveProds = (p) => dbSet('products', p)
+  const saveStoreSettings = (s) => dbSet('storeSettings', s)
 
   const updateOrderStatus = async (id, status, updatedProds) => {
     try {
@@ -141,11 +148,12 @@ export default function App() {
       products={products} orders={orders}
       saveProds={saveProds} updateOrderStatus={updateOrderStatus}
       deleteOrder={deleteOrder} onLogout={handleOwnerLogout}
+      storeSettings={storeSettings} saveStoreSettings={saveStoreSettings}
     />
   )
 
   if (mode === 'customer') return (
-    <CustomerPanel products={products} orders={orders} onBack={() => setModeSync('home')} />
+    <CustomerPanel products={products} orders={orders} onBack={() => setModeSync('home')} storeSettings={storeSettings} />
   )
 
   return (
