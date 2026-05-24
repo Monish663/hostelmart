@@ -13,7 +13,7 @@ export default function OwnerDash({ products, orders, storeSettings, saveStoreSe
 
   const isOpen = storeSettings?.isOpen !== false
   const notice = storeSettings?.notice || ''
-  const [noticeInput, setNoticeInput] = useState(notice)
+  const [noticeInput, setNoticeInput] = useState('')
   const [noticeSaved, setNoticeSaved] = useState(false)
 
   const toggleStore = () => {
