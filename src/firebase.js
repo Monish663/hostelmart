@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app'
 import { getDatabase, ref, set, get, onValue, remove } from 'firebase/database'
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -21,7 +20,6 @@ const firebaseConfig = {
 
 const app      = initializeApp(firebaseConfig)
 const database = getDatabase(app)
-const storage  = getStorage(app)
 export const auth = getAuth(app)
 
 /* ── Database helpers ── */
@@ -48,13 +46,42 @@ export const dbDeleteOrder = async (orderId) => {
   await remove(ref(database, `orders/${orderId}`))
 }
 
-/* ── Upload product image to Firebase Storage ── */
-export const uploadProductImage = async (file, productId) => {
-  const ext      = file.name.split('.').pop()
-  const imageRef = storageRef(storage, `products/${productId}.${ext}`)
-  await uploadBytes(imageRef, file)
-  const url = await getDownloadURL(imageRef)
-  return url
+/* ── Upload image to Cloudinary (free, no billing needed) ── */
+export const uploadProductImage = async (file) => {
+  const cloudName    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+
+  // Check config
+  if (!cloudName || cloudName === 'paste_your_cloud_name_here') {
+    throw new Error('Cloudinary Cloud Name not set in .env file')
+  }
+  if (!uploadPreset) {
+    throw new Error('Cloudinary Upload Preset not set in .env file')
+  }
+
+  // Check file size (max 3MB)
+  if (file.size > 3 * 1024 * 1024) {
+    throw new Error('Image too large. Please use an image under 3MB.')
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', uploadPreset)
+  formData.append('folder', 'hostelmart')
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  const data = await res.json()
+
+  // Show exact Cloudinary error if any
+  if (!res.ok || data.error) {
+    throw new Error('Cloudinary error: ' + (data.error?.message || res.statusText))
+  }
+
+  return data.secure_url
 }
 
 /* ── Auth ── */
@@ -63,4 +90,4 @@ export const ownerLogout = () => signOut(auth)
 export const onOwnerAuthChange = (callback) => onAuthStateChanged(auth, callback)
 export const signInCustomer = () => signInAnonymously(auth)
 
-export { database, storage }
+export { database }
